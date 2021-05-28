@@ -45,6 +45,15 @@ async function myFunction() {
     id,
   })));
 
+  let colors = [[0, 0, 255], [0, 255, 0], [255, 0, 0], [0, 255, 255], [255, 0, 255], [255, 255, 0]];
+  while (colors.length < names.length) {
+    colors.map(c => c.map(c => parseInt(c / 2))).forEach(c => colors.push(c));
+  }
+
+  colors = colors.map(c => `#${c.map(c => c.toString(16).padStart(2,'0')).join('')}`);
+
+
+
 
   const blockConfig =
     [
