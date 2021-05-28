@@ -1,0 +1,26 @@
+{
+  "name": "greconcile",
+  "version": "1.0.0",
+  "description": "",
+  "main": "getSheet.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gzhangx/greconcile.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gzhangx/greconcile/issues"
+  },
+  "homepage": "https://github.com/gzhangx/greconcile#readme",
+  "dependencies": {
+    "bluebird": "^3.7.2",
+    "googleapis": "^73.0.0",
+    "lodash": "^4.17.21",
+    "moment": "^2.29.1",
+    "superagent": "^6.1.0"
+  }
+}

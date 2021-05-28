@@ -46,8 +46,16 @@ async function myFunction() {
   })));
 
   let colors = [[0, 0, 255], [0, 255, 0], [255, 0, 0], [0, 255, 255], [255, 0, 255], [255, 255, 0]];
+  let fontColor = ['#ffff00', '#ff00ff', '#00ffff', '#000000', '#000000', '#000000'];
   while (colors.length < names.length) {
-    colors.map(c => c.map(c => parseInt(c / 2))).forEach(c => colors.push(c));
+    colors.map(c => c.map(c => parseInt(c / 2))).forEach(c => {
+      if (c[0] + c[1] + c[2] < 255 + 128) {
+        fontColor.push('#ffffff');
+      } else {
+        fontColor.push('#000000')
+      }
+      return colors.push(c);
+    });
   }
 
   colors = colors.map(c => `#${c.map(c => c.toString(16).padStart(2,'0')).join('')}`);
@@ -223,7 +231,11 @@ async function myFunction() {
     blockSits.forEach(blk => {
       blk.forEach(row => {
         row.forEach(c => {
-          sheet.getRange(c.uiPos.row, c.uiPos.col).setValue('-');
+          range.setValue(c.user ? c.user.id : '-');
+          if (c.user) {
+            range.setBackground(colors[c.user.id]);
+            range.setFontColor(fontColor[c.user.id]);
+          }
         });
       })
     });
