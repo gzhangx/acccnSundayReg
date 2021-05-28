@@ -56,18 +56,17 @@ async function myFunction() {
   const blockSpacing = 2;
   const fMax = (acc, cr) => acc < cr ? cr : acc;
   const blockColMaxes = blockConfig.map(r => r.reduce(fMax, 0));
-  console.log('blockColMaxes=')
-  console.log(blockColMaxes)
+  
   const numCols = blockColMaxes.reduce((acc, r) => acc + r + blockSpacing, 0);
   const numRows = blockConfig.map(r => r.length).reduce(fMax, 0);
-  console.log(`num cols = ${numCols}, rows=${numRows}`);
+  
   const STARTCol = 3;
   const STARTRow = 3;
   const namesSpacking = 3;
 
   const namesStartRow = STARTRow + numRows + namesSpacking;
   const CELLSIZE = 20;
-  const blockStars = blockColMaxes.reduce((acc, b) => {
+  const blockStarts = blockColMaxes.reduce((acc, b) => {
     const curStart = acc.cur + blockSpacing + acc.prev;
     acc.prev = b;
     acc.res.push(curStart);
@@ -79,8 +78,7 @@ async function myFunction() {
     cur: STARTCol - blockSpacing,
   }).res;
 
-  console.log(`blcick starts`);
-  console.log('test1111');
+
 
   const blockSits = blockConfig.map((blk, bi) => {
     return blk.map((rowCnt, curRow) => {
@@ -89,7 +87,7 @@ async function myFunction() {
         r[i] = {
           user: null,
           uiPos: {
-            col: blockStars[bi] + i,
+            col: blockStarts[bi] + i,
             row: STARTRow + curRow,
           }
         }
@@ -101,13 +99,13 @@ async function myFunction() {
   //const headers = [];
   //for (let i = 0; i < numCols + STARTCol; i++) headers[i] = '';
   /*
-  blockStars.forEach((bs,i)=>{
+  blockStarts.forEach((bs,i)=>{
     const headers = [];
     for (let j = 0; j < blockColMaxes[i];j++) headers[j] = '';  
-    sheet.getRange(STARTRow, blockStars[i], 1, blockColMaxes[i]).setValues([headers]);
-    sheet.setColumnWidths(blockStars[i], blockColMaxes[i], CELLSIZE);
+    sheet.getRange(STARTRow, blockStarts[i], 1, blockColMaxes[i]).setValues([headers]);
+    sheet.setColumnWidths(blockStarts[i], blockColMaxes[i], CELLSIZE);
     sheet.setRowHeights(STARTRow, numRows, CELLSIZE);
-    sheet.getRange(STARTRow,blockStars[i], numRows, blockColMaxes[i]).setBackground('yellow');
+    sheet.getRange(STARTRow,blockStarts[i], numRows, blockColMaxes[i]).setBackground('yellow');
   });
   */
   
