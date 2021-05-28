@@ -77,7 +77,7 @@ async function myFunction() {
   const numCols = blockColMaxes.reduce((acc, r) => acc + r + blockSpacing, 0);
   const numRows = blockConfig.map(r => r.length).reduce(fMax, 0);
   
-  const STARTCol = 3;
+  const STARTCol = 4;
   const STARTRow = 3;
   const namesSpacking = 3;
 
@@ -240,10 +240,10 @@ async function myFunction() {
       })
     });
     const userInfo = [
-      ['Name', 'Quantity', 'Email'],
-      ...names.map(n => [n.name, n.quantity, n.email])
+      ['Code', 'Name', 'Quantity', 'Email'],
+      ...names.map(n => [n.id, n.name, n.quantity, n.email])
     ];
-    sheet.getRange(namesStartRow, 1, names.length + 1, 3).setValues(
+    sheet.getRange(namesStartRow, 1, names.length + 1, 4).setValues(
       userInfo
     )
 
