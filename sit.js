@@ -10,8 +10,25 @@ const creds = require('./credentials.json');
 async function myFunction() {
   let pages = null;
   if (isLocal) {
-    var response = await request.get("https://www.eventbriteapi.com/v3/events/156798329023/attendees").set('Authorization', creds.eventBriteAuth).send();
-    pages = response.body
+    //var response = await request.get("https://www.eventbriteapi.com/v3/events/156798329023/attendees").set('Authorization', creds.eventBriteAuth).send();
+    //pages = response.body
+    const fakeSizes = { 'gg1': 3, 'gg12': 4 ,'gg19':6,'gg22':8,'gg33':5};
+    const fakeNames = [];
+    for (let i = 0; i < 120; i++) {
+      fakeNames[i] = 'gg' + i;
+    }
+    pages = {
+      attendees:
+        pages = fakeNames.map(n => {
+          return {
+            quantity: fakeSizes[n] || 1,
+            profile: {
+              name: n,
+              email: n + '@hotmail.com'
+            }
+          }
+        })
+    }
   } else {
     var response = UrlFetchApp.fetch("https://www.eventbriteapi.com/v3/events/156798329023/attendees", {
       headers:
@@ -21,10 +38,11 @@ async function myFunction() {
     });
     const pages = JSON.parse(response.getContentText())
   }
-  const names = (pages.attendees.map(a => ({
+  const names = (pages.attendees.map((a,id) => ({
     quantity: a.quantity,
     email: a.profile.email,
-    name: a.profile.name
+    name: a.profile.name,
+    id,
   })));
 
 
@@ -101,11 +119,91 @@ async function myFunction() {
 
 
 
-  const fit = () => {
+  const siteSpacing = 3;
+  const fit = (who) => {
+    let fited = false;
+    for (let row = 0; row < numRows; row++) {
+      for (let blki = 0; blki < blockSits.length; blki++) {
+        const curBlock = blockSits[blki];
+        const curRow = curBlock[row];
+        ['left', 'right'].forEach(side => {
+          if (fited) return;
+          if (side === 'left') {
+            if (curRow[0].user) return;
+            for (let i = 0; i < who.quantity; i++) curRow[i].user = who;
+            fited = true;
+            return;
+          } else if (side === 'right') {
+            let ind = curRow.length - 1;
+            if (curRow[ind].user) return;
+            const toSearch = ind - who.quantity - siteSpacing;
+            for (let i = ind; i >= toSearch; i--) {
+              if (curRow[i].user) return;
+            }
+            for (let i = 0; i < who.quantity; i++) {
+              curRow[ind - i].user = who;
+            }
+            fited = true;
+          }
+        });
+      }
+    }
+    if (!fited) {
+      let maxAva = 0;
+      let curMaxRow = null;
+      for (let row = 0; row < numRows; row++) {
+        for (let blki = 0; blki < blockSits.length; blki++) {
+          const curBlock = blockSits[blki];
+          const curRow = curBlock[row];
+          let rowTotal = 0;
+          for (let i = 0; i < curRow.length; i++) {
+            if (!curRow[i].user) rowTotal++;
+          }
+          if (rowTotal > maxAva) {
+            maxAva = rowTotal;
+            curMaxRow = curRow;
+          }
+        }
+      }      
 
+      if (curMaxRow) {
+        let curMax = 0, curStart = -1, curEnd = -1;
+        let bestSpacing = null;
+        for (let i = 0; i < curMaxRow.length; i++) {
+          const curUser = curMaxRow[i].user;
+          if (curStart < 0) {
+            if (!curUser) {
+              curStart = i;
+            }
+          } else {
+            if (curUser) {
+              curEnd = i;
+              const size = curEnd - curStart;
+              if (size > curMax) {
+                curMax = size;
+                bestSpacing = {
+                  start: curStart,
+                  end: curEnd - 1,
+                  size, 
+                }
+              }
+              curStart = -1;
+            }
+          }
+        }
+        if (bestSpacing) {
+          if (bestSpacing.size > who.quantity + (siteSpacing * 2)) {
+            const left = Math.round((bestSpacing.size - who.quantity) / 2);
+            for (let i = 0; i < who.quantity; i++)
+              curMaxRow[bestSpacing.start + left + i].user = who;
+          }
+        }
+      }
+    }
+    return fited;
   };
 
-  fit();
+  names.forEach(fit);
 
 
   if (!isLocal) {
@@ -130,6 +228,18 @@ async function myFunction() {
       userInfo
     )
 
+  } else {
+    const sheet = gs.createSheet();    
+    const data = [];
+    for (let i = 0; i < numRows; i++) data[i] = [];
+    blockSits.forEach(blk => {
+      blk.forEach(r => {
+        r.forEach(c => {
+          data[c.uiPos.row - STARTRow][c.uiPos.col - STARTCol] = c.user ? c.user.id: 'e';
+        })
+      })
+    })
+    await sheet.updateSheet('1p7W0Gwh88tCSiEA7Y6S_tVfyTMMbzotjaSZmfgEpDHY', `Sheet1!C3:AV12`, data);    
   }
 
 }
