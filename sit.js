@@ -279,10 +279,13 @@ async function myFunction() {
     blockSits.forEach(blk => {
       blk.forEach(row => {
         row.forEach(c => {
+          const range = sheet.getRange(c.uiPos.row, c.uiPos.col);
           range.setValue(c.user ? c.user.id : '-');
           if (c.user) {
             range.setBackground(colors[c.user.id]);
             range.setFontColor(fontColor[c.user.id]);
+          } else {
+            range.setBackground('yellow');
           }
         });
       })
