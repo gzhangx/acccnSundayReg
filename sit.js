@@ -2,16 +2,61 @@
 const isLocal = true;
 
 const gs = require('./getSheet');
-const request = require('superagent');
-const creds = require('./credentials.json');
+
 //const sheet = gs.createSheet();
 //const cardStatementData = await sheet.readSheet('A', 'ChaseCard!A:F')
 
+function getNextSunday() {
+  let cur = new Date();
+  const oneday = 24 * 60 * 60 * 1000;
+  while (cur.getDay() !== 0) {    
+    cur = new Date(cur.getTime() + oneday);    
+  }
+  return (getDateStr(cur));
+}
+
+function getDateStr(date) {
+  return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
+}
+
 async function myFunction() {
-  let pages = null;
-  if (isLocal) {
-    //var response = await request.get("https://www.eventbriteapi.com/v3/events/156798329023/attendees").set('Authorization', creds.eventBriteAuth).send();
-    //pages = response.body
+  const nextSunday = getNextSunday();
+  console.log(`nextSunday=${nextSunday}`);
+  const authorizationToken = require('./credentials.json').eventBriteAuth;
+  const ebFetch = async url => {
+    console.log(`url=${url}`);
+    if (isLocal) {
+      //var response = await request.get("https://www.eventbriteapi.com/v3/events/156798329023/attendees").set('Authorization', authorizationToken).send();
+      //pages = response.body
+      const response = await require('superagent').get(url).set('Authorization', authorizationToken).send();
+      return response.body;
+    } else {
+      var response = UrlFetchApp.fetch(url, {
+        headers:
+        {
+          authorization: authorizationToken
+        }
+      });
+      const pages = JSON.parse(response.getContentText())
+      return pages;
+    }
+  }
+  const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/?name_filter=' + encodeURIComponent('ACCCN 北堂中文实体崇拜注册(测试') + '&time_filter=current_future');
+  const eventsMapped = eventArys.events.map(e => {
+    return {
+      id: e.id,
+      date: e.start.local.slice(0, 10)
+    }
+  });
+  const nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
+  if (!nextGoodEvent) {
+    console.log('Next event not fund');
+    console.log(eventsMapped);
+    return;
+  }
+  
+  let pages = await ebFetch(`https://www.eventbriteapi.com/v3/events/${nextGoodEvent.id}/attendees`);
+  if (false && isLocal) {    
     const fakeSizes = { 'gg1': 3, 'gg12': 4 ,'gg19':6,'gg22':8,'gg33':5};
     const fakeNames = [];
     for (let i = 0; i < 120; i++) {
@@ -29,21 +74,24 @@ async function myFunction() {
           }
         })
     }
-  } else {
-    var response = UrlFetchApp.fetch("https://www.eventbriteapi.com/v3/events/156798329023/attendees", {
-      headers:
-      {
-        authorization: creds.eventBriteAuth
-      }
-    });
-    const pages = JSON.parse(response.getContentText())
-  }
-  const names = (pages.attendees.map((a,id) => ({
-    quantity: a.quantity,
-    email: a.profile.email,
-    name: a.profile.name,
-    id,
-  })));
+  } 
+  const names = pages.attendees.reduce((acc, att) => {
+    let ord = acc.oid[att.order_id];
+    if (!ord) {
+      ord = {
+        quantity: 0,
+        emails: [],
+        names: [],
+        id: acc.ary.length,
+      };
+      acc.oid[att.order_id] = ord;
+      acc.ary.push(ord);
+    }
+    ord.quantity++;
+    ord.emails.push(att.profile.email);
+    ord.names.push(att.profile.name);
+    return acc;
+  }, { ary: [], oid: {}}).ary;  
 
   let colors = [[0, 0, 255], [0, 255, 0], [255, 0, 0], [0, 255, 255], [255, 0, 255], [255, 255, 0]];
   let fontColor = ['#ffff00', '#ff00ff', '#00ffff', '#000000', '#000000', '#000000'];
@@ -241,7 +289,7 @@ async function myFunction() {
     });
     const userInfo = [
       ['Code', 'Name', 'Quantity', 'Email'],
-      ...names.map(n => [n.id, n.name, n.quantity, n.email])
+      ...names.map(n => [n.id, n.names.join(','), n.quantity, n.emails.join(',')])
     ];
     sheet.getRange(namesStartRow, 1, names.length + 1, 4).setValues(
       userInfo
