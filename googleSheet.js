@@ -47,7 +47,7 @@ function createSheetBase(ggcredentials, userName, getToken, saveToken) {
     return authUrl;
   }
 
-  async function authorize2CodeToToken(spreadsheetId,code) {
+  async function authorize2CodeToToken(code) {
     const oAuth2Client=getGoogleClient();
     return new Promise((resolve,reject) => {
       oAuth2Client.getToken(code,(err,token) => {
@@ -80,7 +80,7 @@ function createSheetBase(ggcredentials, userName, getToken, saveToken) {
       });
       rl.question('Enter the code from that page here: ',code => {
         rl.close();
-        authorize2CodeToToken(spreadsheetId,code).then(token => {
+        authorize2CodeToToken(code).then(token => {
           resolve(token);
         }).catch(err => {
           reject(err);
