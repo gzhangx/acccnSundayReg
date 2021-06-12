@@ -2,17 +2,25 @@
 const isLocal = true;
 
 const gs = require('./getSheet');
-
+const fs = require('fs');
+const request = require('superagent');
+const { get } = require('lodash');
 //const sheet = gs.createSheet();
 //const cardStatementData = await sheet.readSheet('A', 'ChaseCard!A:F')
 
-function getNextSunday() {
+const sheetName = 'Sheet1';
+
+function getNextSundays() {
   let cur = new Date();
   const oneday = 24 * 60 * 60 * 1000;
   while (cur.getDay() !== 0) {    
     cur = new Date(cur.getTime() + oneday);    
   }
-  return (getDateStr(cur));
+  const res = [];
+  for (let i = 0; i < 10; i++) {
+    res[i] =  (getDateStr(new Date(cur.getTime()+(oneday*i))));
+  }
+  return res;
 }
 
 function getDateStr(date) {
@@ -20,7 +28,8 @@ function getDateStr(date) {
 }
 
 async function myFunction() {
-  const nextSunday = getNextSunday();
+  const nextSundays = getNextSundays();
+  const nextSunday = nextSundays[0];
   console.log(`nextSunday=${nextSunday}`);
   const authorizationToken = require('./credentials.json').eventBriteAuth;
   const ebFetch = async url => {
@@ -48,9 +57,14 @@ async function myFunction() {
       date: e.start.local.slice(0, 10)
     }
   });
-  const nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
+  let nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
+  let nsi = 0;
+  while (!nextGoodEvent && nsi < nextSundays.length) {
+    nsi++;
+    nextGoodEvent = (eventsMapped.filter(x => x.date === nextSundays[nsi]))[0];
+  }
   if (!nextGoodEvent) {
-    console.log('Next event not fund');
+    console.log('Next event not found');
     console.log(eventsMapped);
     return;
   }
@@ -299,23 +313,141 @@ async function myFunction() {
     )
 
   } else {
-    const sheet = gs.createSheet();    
+    const client = await gs.getClient('gzprem');
+    const sheet = client.getSheetOps('1K4TFtYq7TVlKBifMfihTEiEclcVuScwOdksACEgdlwE');
     const data = [];
-    for (let i = 0; i < numRows; i++) data[i] = [];
+    const debugCOLLimit = 30;
+    for (let i = 0; i < STARTRow + numRows; i++) {
+      data[i] = [];
+      for (let j = 0; j < STARTCol + numCols; j++) {
+        data[i][j] = null;
+      }
+
+      //debug
+      //data[i] = [];
+      for (let j = 0; j < debugCOLLimit; j++)
+        data[i][j] = null;
+    }
     blockSits.forEach(blk => {
       blk.forEach(r => {
         r.forEach(c => {
-          data[c.uiPos.row - STARTRow][c.uiPos.col - STARTCol] = c.user ? c.user.id: 'e';
+          //data[c.uiPos.row - STARTRow][c.uiPos.col - STARTCol] = c.user ? c.user.id : 'e';
+          //if (c.uiPos.col < debugCOLLimit) //debug
+          data[c.uiPos.row-1][c.uiPos.col-1] = c;
         })
       })
-    })
-    await sheet.updateSheet('1p7W0Gwh88tCSiEA7Y6S_tVfyTMMbzotjaSZmfgEpDHY', `Sheet1!C3:AV12`, data);    
+    });
+
+    const endRowIndex = data.length;
+    const endColumnIndex = STARTCol + numCols;
+    console.log(`end col num=${numCols} ${STARTCol} end=${endColumnIndex}`);
+    const sheetInfo = await sheet.sheetInfo(sheetName);
+    if (!sheetInfo) {
+      console.log(`sheet ${sheetName} not found`);
+    }
+    const {sheetId} = sheetInfo;
+    const updateData = {
+      requests: [
+        {
+          updateCells: {
+            fields: '*',
+            range: {
+              sheetId,
+              startColumnIndex: 0,
+              endColumnIndex,
+              startRowIndex: 0,
+              endRowIndex
+            },
+            rows: data.map(r => {
+              return {
+                values: r.map((cval) => {
+                  const user = cval && cval.user;
+                  const stringValue = (cval ? (user?.id || '-') : '').toString();
+                  const horizontalAlignment = 'CENTER';
+                  const cell = {
+                    userEnteredValue: { stringValue }
+                  };
+                  if (user && user.id) {
+                    cell.userEnteredFormat = {
+                      backgroundColor: {
+                        blue: 100,
+                        green: 100,
+                        red: 100
+                      },
+                      horizontalAlignment,
+                      textFormat: {
+                        foregroundColor: {
+                          blue: 255,
+                          green: 255,
+                          red: 255,
+                        },
+                        //fontFamily: string,
+                        //"fontSize": integer,
+                        bold: true,
+                        //"italic": boolean,
+                        //"strikethrough": boolean,
+                        //"underline": boolean,                                            
+                      },
+                      borders: {
+                        bottom: {
+                          style: 'SOLID',
+                          width: 3,
+                          color: {
+                            blue: 0,
+                            green: 255,
+                            red: 0
+                          }
+                        }
+                      }
+                    };
+                  } else {
+                    cell.userEnteredFormat = {
+                      horizontalAlignment,
+                    }
+                  }
+                  return cell;
+                })
+              };
+            })
+          }
+        }
+      ]
+    };
+
+    if (data.length > sheetInfo.rowCount || endColumnIndex > sheetInfo.columnCount) {
+      const requests = [];
+      if (endColumnIndex > sheetInfo.columnCount) {
+        requests.push({
+          appendDimension: {
+            sheetId,
+            dimension: 'COLUMNS',
+            length: endColumnIndex - sheetInfo.columnCount,
+          }
+        })
+      }
+      if (requests.length) {        
+        console.log(`updating column endColumnIndex=${endColumnIndex} sheetInfo.columnCount=${sheetInfo.columnCount} ${endColumnIndex > sheetInfo.columnCount}` );
+        console.log({
+          sheetId,
+          dimension: 'COLUMNS',
+          length: endColumnIndex - sheetInfo.columnCount,
+        })
+        await sheet.doBatchUpdate({ requests });
+        console.log('column updated');
+      }
+    }
+    
+    
+    //fs.writeFileSync('test.json', JSON.stringify(updateData, null, 2))
+    //fs.writeFileSync('debugblockSits.json', JSON.stringify(blockSits,null,2))
+
+    await sheet.doBatchUpdate(updateData);
   }
 
 }
 
 if (isLocal) {
   myFunction().catch(err => {
-    console.log(err)
+    console.log(get(err, 'response.body'));    
   });
 }
