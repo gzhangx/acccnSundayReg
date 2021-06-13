@@ -338,14 +338,93 @@ async function myFunction() {
       })
     });
 
-    const endRowIndex = data.length;
+    
     const endColumnIndex = STARTCol + numCols;
     console.log(`end col num=${numCols} ${STARTCol} end=${endColumnIndex}`);
     const sheetInfo = await sheet.sheetInfo(sheetName);
     if (!sheetInfo) {
       console.log(`sheet ${sheetName} not found`);
     }
-    const {sheetId} = sheetInfo;
+    const { sheetId } = sheetInfo;
+    const userInfo = [
+      ['Code', 'Quantity', 'Name', 'Email'],
+      ...names.map(n => [n.id, n.quantity, n.names.join(','), n.emails.join(',')])
+    ];
+    const userData = userInfo.map(u => {
+      return [u[0].toString(), '', '', '', u[1].toString(), '', '', '', u[2], '', '', '', '', '', '', u[3]];
+    }).map(r => {
+      return {
+        values: r.map(stringValue => {
+          const horizontalAlignment = 'LEFT';
+          const cell = {
+            userEnteredValue: { stringValue }
+          };
+          return cell;
+        })
+      };
+    });
+    const rowData = data.map(r => {
+      return {
+        values: r.map((cval) => {
+          const user = cval && cval.user;
+          const stringValue = (cval ? (user?.id || '-') : '').toString();
+          const horizontalAlignment = 'CENTER';
+          const cell = {
+            userEnteredValue: { stringValue }
+          };
+          if (user && user.id) {
+            cell.userEnteredFormat = {
+              backgroundColor: {
+                blue: 0.5,
+                green: 0.5,
+                red: 0.5
+              },
+              horizontalAlignment,
+              textFormat: {
+                foregroundColor: {
+                  blue: 0,
+                  green: 0,
+                  red: 0,
+                },
+                //fontFamily: string,
+                //"fontSize": integer,
+                bold: true,
+                //"italic": boolean,
+                //"strikethrough": boolean,
+                //"underline": boolean,                                            
+              },
+              borders: {
+                bottom: {
+                  style: 'SOLID',
+                  width: 1,
+                  color: {
+                    blue: 0,
+                    green: 1,
+                    red: 0
+                  }
+                }
+              }
+            };
+          } else {
+            cell.userEnteredFormat = {
+              horizontalAlignment,
+              backgroundColor: cval ? {
+                blue: 0,
+                green: 1,
+                red: 1
+              } : {
+                blue: 1,
+                green: 1,
+                red: 1
+              },
+            }
+          }
+          return cell;
+        })
+      };
+    });
+    
+    const endRowIndex = data.length + userData.length + 1;
     const updateData = {
       requests: [
         {
@@ -358,72 +437,13 @@ async function myFunction() {
               startRowIndex: 0,
               endRowIndex
             },
-            rows: data.map(r => {
-              return {
-                values: r.map((cval) => {
-                  const user = cval && cval.user;
-                  const stringValue = (cval ? (user?.id || '-') : '').toString();
-                  const horizontalAlignment = 'CENTER';
-                  const cell = {
-                    userEnteredValue: { stringValue }
-                  };
-                  if (user && user.id) {
-                    cell.userEnteredFormat = {
-                      backgroundColor: {
-                        blue: 100,
-                        green: 100,
-                        red: 100
-                      },
-                      horizontalAlignment,
-                      textFormat: {
-                        foregroundColor: {
-                          blue: 255,
-                          green: 255,
-                          red: 255,
-                        },
-                        //fontFamily: string,
-                        //"fontSize": integer,
-                        bold: true,
-                        //"italic": boolean,
-                        //"strikethrough": boolean,
-                        //"underline": boolean,                                            
-                      },
-                      borders: {
-                        bottom: {
-                          style: 'SOLID',
-                          width: 1,
-                          color: {
-                            blue: 0,
-                            green: 255,
-                            red: 0
-                          }
-                        }
-                      }
-                    };
-                  } else {
-                    cell.userEnteredFormat = {
-                      horizontalAlignment,
-                      backgroundColor: cval?{
-                        blue: 0,
-                        green: 1,
-                        red: 1
-                      } : {
-                          blue: 1,
-                          green: 1,
-                          red: 1
-                      },
-                    }
-                  }
-                  return cell;
-                })
-              };
-            })
+            rows: [...rowData, ...userData]
           }
         }
       ]
     };
 
-    if (data.length > sheetInfo.rowCount || endColumnIndex > sheetInfo.columnCount) {
+    if (endRowIndex > sheetInfo.rowCount || endColumnIndex > sheetInfo.columnCount) {
       const requests = [];
       if (endColumnIndex > sheetInfo.columnCount) {
         requests.push({
@@ -434,12 +454,12 @@ async function myFunction() {
           }
         })
       }
-      if (data.length > sheetInfo.rowCount) {
+      if (endRowIndex > sheetInfo.rowCount) {
         requests.push({
           appendDimension: {
             sheetId,
             dimension: 'ROWS',
-            length: data.length - sheetInfo.rowCount,
+            length: endRowIndex - sheetInfo.rowCount ,
           }
         })
       }
