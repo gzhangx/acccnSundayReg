@@ -400,7 +400,7 @@ async function myFunction() {
     const { sheetId } = sheetInfo;
     const userInfo = [
       ['Code', 'Quantity', '','Pos','','', 'Name', 'Email'],
-      ...names.map(n => [n.id, n.quantity, n.id, n.posInfo.block, n.posInfo.side, n.posInfo.row.toString(), n.names.join(','), n.emails.join(',')])
+      ...names.map(n => [n.id, n.quantity, n.pos, n.posInfo.block, n.posInfo.side, n.posInfo.row.toString(), n.names.join(','), n.emails.join(',')])
     ];
     
     const userData = userInfo.map(u => {
