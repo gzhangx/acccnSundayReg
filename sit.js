@@ -417,11 +417,7 @@ async function myFunction() {
               backgroundColor: rgbColors[user.pos],
               horizontalAlignment,
               textFormat: {
-                foregroundColor: {
-                  blue: 0,
-                  green: 0,
-                  red: 0,
-                },
+                foregroundColor: rgbFontColor[user.pos],
                 //fontFamily: string,
                 //"fontSize": integer,
                 bold: true,
