@@ -90,15 +90,20 @@ async function myFunction() {
           }
         })
     }
-  } 
+  }
+  const preSitItem = {
+    quantity: 0,
+    emails: [],
+    names: [],
+    pos: 0,
+    id: 1
+  }
   const names = pages.attendees.reduce((acc, att) => {
     let ord = acc.oid[att.order_id];
     const key = `${att.profile.name}:${att.profile.email}`.toLocaleLowerCase();
-    const existing = acc.ary.find(a => a.key === key);
+    const existing = preSits.find(k => k.toLowerCase() === key);
     if (existing) {
-      existing.emails.push(att.profile.email);
-      existing.names.push(att.profile.name);
-      return acc;
+      ord = preSitItem;      
     }
     if (!ord) {
       ord = {
@@ -117,14 +122,8 @@ async function myFunction() {
     ord.names.push(att.profile.name);
     return acc;
   }, {
-    ary: preSits.map((key,pos) => ({
-      quantity: 1,
-      emails: [],
-      names: [],
-      key: key.toLocaleLowerCase(),
-      pos,
-      id: pos+1
-  })), oid: {}}).ary;  
+    ary: [preSitItem], oid: {}
+  }).ary;
 
   let colors = [[0, 0, 255], [0, 255, 0], [255, 0, 0], [0, 255, 255], [255, 0, 255], [255, 200, 200]];
   let fontColor = ['#ffff00', '#ff00ff', '#00ffff', '#000000', '#000000', '#000000'];
