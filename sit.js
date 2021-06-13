@@ -2,17 +2,27 @@
 const isLocal = true;
 
 const gs = require('./getSheet');
-
+const fs = require('fs');
+const request = require('superagent');
+const { get } = require('lodash');
 //const sheet = gs.createSheet();
 //const cardStatementData = await sheet.readSheet('A', 'ChaseCard!A:F')
 
-function getNextSunday() {
+const sheetName = 'Sheet1';
+
+const credentials = require('./credentials.json')
+const preSits = credentials.preSits;
+function getNextSundays() {
   let cur = new Date();
   const oneday = 24 * 60 * 60 * 1000;
   while (cur.getDay() !== 0) {    
     cur = new Date(cur.getTime() + oneday);    
   }
-  return (getDateStr(cur));
+  const res = [];
+  for (let i = 0; i < 10; i++) {
+    res[i] =  (getDateStr(new Date(cur.getTime()+(oneday*i))));
+  }
+  return res;
 }
 
 function getDateStr(date) {
@@ -20,9 +30,10 @@ function getDateStr(date) {
 }
 
 async function myFunction() {
-  const nextSunday = getNextSunday();
+  const nextSundays = getNextSundays();
+  const nextSunday = nextSundays[0];
   console.log(`nextSunday=${nextSunday}`);
-  const authorizationToken = require('./credentials.json').eventBriteAuth;
+  const authorizationToken = credentials.eventBriteAuth;
   const ebFetch = async url => {
     console.log(`url=${url}`);
     if (isLocal) {
@@ -48,9 +59,14 @@ async function myFunction() {
       date: e.start.local.slice(0, 10)
     }
   });
-  const nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
+  let nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
+  let nsi = 0;
+  while (!nextGoodEvent && nsi < nextSundays.length) {
+    nsi++;
+    nextGoodEvent = (eventsMapped.filter(x => x.date === nextSundays[nsi]))[0];
+  }
   if (!nextGoodEvent) {
-    console.log('Next event not fund');
+    console.log('Next event not found');
     console.log(eventsMapped);
     return;
   }
@@ -77,35 +93,61 @@ async function myFunction() {
   } 
   const names = pages.attendees.reduce((acc, att) => {
     let ord = acc.oid[att.order_id];
+    const key = `${att.profile.name}:${att.profile.email}`.toLocaleLowerCase();
+    const existing = acc.ary.find(a => a.key === key);
+    if (existing) {
+      existing.emails.push(att.profile.email);
+      existing.names.push(att.profile.name);
+      return acc;
+    }
     if (!ord) {
       ord = {
         quantity: 0,
         emails: [],
         names: [],
-        id: acc.ary.length,
+        key,
+        pos: acc.ary.length,
+        id: acc.ary.length + 1,
       };
-      acc.oid[att.order_id] = ord;
+      acc.oid[att.order_id] = ord;      
       acc.ary.push(ord);
     }
     ord.quantity++;
     ord.emails.push(att.profile.email);
     ord.names.push(att.profile.name);
     return acc;
-  }, { ary: [], oid: {}}).ary;  
+  }, {
+    ary: preSits.map((key,pos) => ({
+      quantity: 1,
+      emails: [],
+      names: [],
+      key: key.toLocaleLowerCase(),
+      pos,
+      id: pos+1
+  })), oid: {}}).ary;  
 
   let colors = [[0, 0, 255], [0, 255, 0], [255, 0, 0], [0, 255, 255], [255, 0, 255], [255, 255, 0]];
   let fontColor = ['#ffff00', '#ff00ff', '#00ffff', '#000000', '#000000', '#000000'];
+  let rgbFontColor = [[255, 255, 0], [255, 0, 255], [0, 255, 255], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
   while (colors.length < names.length) {
     colors.map(c => c.map(c => parseInt(c / 2))).forEach(c => {
       if (c[0] + c[1] + c[2] < 255 + 128) {
         fontColor.push('#ffffff');
+        rgbFontColor.push([255,255,255])
       } else {
         fontColor.push('#000000')
+        rgbFontColor.push([0, 0, 0])
       }
       return colors.push(c);
     });
   }
 
+  const rgb255toClr = rgb => ['red', 'green', 'blue'].reduce((acc, name, i) => {
+    acc[name] = rgb[i] / 255.0;
+    return acc;
+  }, {});
+  const rgbColors = colors.map(rgb255toClr);
+  rgbFontColor = rgbFontColor.map(rgb255toClr)
   colors = colors.map(c => `#${c.map(c => c.toString(16).padStart(2,'0')).join('')}`);
 
 
@@ -183,6 +225,7 @@ async function myFunction() {
 
 
   const siteSpacing = 3;
+  const blkMap = ['A','B','C','D']
   const fit = (who) => {
     let fited = false;
     for (let row = 0; row < numRows; row++) {
@@ -193,7 +236,16 @@ async function myFunction() {
           if (fited) return;
           if (side === 'left') {
             if (curRow[0].user) return;
-            for (let i = 0; i < who.quantity; i++) curRow[i].user = who;
+            for (let i = 0; i < who.quantity; i++){
+              if (!curRow[i].user)
+                curRow[i].user = who;
+              else return fit(who); //this needs testing, i.e. we grow out of current row.
+            } 
+            who.posInfo = {
+              block: blkMap[blki],
+              row,
+              side: 'A',              
+            }
             fited = true;
             return;
           } else if (side === 'right') {
@@ -207,6 +259,11 @@ async function myFunction() {
               curRow[ind - i].user = who;
             }
             fited = true;
+            who.posInfo = {
+              block: blkMap[blki],
+              row,
+              side: 'C',
+            }
           }
         });
       }
@@ -214,6 +271,8 @@ async function myFunction() {
     if (!fited) {
       let maxAva = 0;
       let curMaxRow = null;
+      let curMaxRowNumber = -1;
+      let curMaxRowBlk = -1;
       for (let row = 0; row < numRows; row++) {
         for (let blki = 0; blki < blockSits.length; blki++) {
           const curBlock = blockSits[blki];
@@ -225,6 +284,8 @@ async function myFunction() {
           if (rowTotal > maxAva) {
             maxAva = rowTotal;
             curMaxRow = curRow;
+            curMaxRowNumber = row;
+            curMaxRowBlk = blki;
           }
         }
       }      
@@ -259,6 +320,11 @@ async function myFunction() {
             const left = Math.round((bestSpacing.size - who.quantity) / 2);
             for (let i = 0; i < who.quantity; i++)
               curMaxRow[bestSpacing.start + left + i].user = who;
+            who.posInfo = {
+              block: blkMap[curMaxRowBlk],
+              row: curMaxRowNumber,
+              side: 'B',
+            }
           }
         }
       }
@@ -299,23 +365,213 @@ async function myFunction() {
     )
 
   } else {
-    const sheet = gs.createSheet();    
+    const client = await gs.getClient('gzprem');
+    const sheet = client.getSheetOps(credentials.sheetId);
     const data = [];
-    for (let i = 0; i < numRows; i++) data[i] = [];
+    const debugCOLLimit = 30;
+    for (let i = 0; i < STARTRow + numRows; i++) {
+      data[i] = [];
+      for (let j = 0; j < STARTCol + numCols; j++) {
+        data[i][j] = null;
+      }
+
+      //debug
+      //data[i] = [];
+      for (let j = 0; j < debugCOLLimit; j++)
+        data[i][j] = null;
+    }
     blockSits.forEach(blk => {
       blk.forEach(r => {
         r.forEach(c => {
-          data[c.uiPos.row - STARTRow][c.uiPos.col - STARTCol] = c.user ? c.user.id: 'e';
+          //data[c.uiPos.row - STARTRow][c.uiPos.col - STARTCol] = c.user ? c.user.id : 'e';
+          //if (c.uiPos.col < debugCOLLimit) //debug
+          data[c.uiPos.row-1][c.uiPos.col-1] = c;
         })
       })
+    });
+
+    
+    const endColumnIndex = STARTCol + numCols;
+    console.log(`end col num=${numCols} ${STARTCol} end=${endColumnIndex}`);
+    const sheetInfo = await sheet.sheetInfo(sheetName);
+    if (!sheetInfo) {
+      console.log(`sheet ${sheetName} not found`);
+    }
+    const { sheetId } = sheetInfo;
+    const userInfo = [
+      ['Code', 'Quantity', '','Pos','','', 'Name', 'Email'],
+      ...names.map(n => [n.id, n.quantity, n.id, n.posInfo.block, n.posInfo.side, n.posInfo.row.toString(), n.names.join(','), n.emails.join(',')])
+    ];
+    
+    const userData = userInfo.map(u => {
+      return [u[0].toString(), '', '', '', u[1].toString(), '', '', '', '', {type:'userColor', val:u[2]},u[3],u[4],u[5],'', u[6], '', '', '', '', '', '', u[7]];
+    }).map(r => {
+      return {
+        values: r.map(o => {
+          let stringValue = o;
+          if (typeof (o) === 'object') {
+            stringValue = '';
+          }
+          const horizontalAlignment = 'LEFT';
+          const cell = {
+            userEnteredValue: { stringValue }
+          };
+          if (typeof (o) === 'object') {
+            cell.userEnteredFormat = {
+              backgroundColor: rgbColors[o.val],
+            }
+          }
+          return cell;
+        })
+      };
+    });
+    const rowData = data.map(r => {
+      return {
+        values: r.map((cval) => {
+          const user = cval && cval.user;
+          const stringValue = (cval ? (user?.id || '-') : '').toString();
+          const horizontalAlignment = 'CENTER';
+          const cell = {
+            userEnteredValue: { stringValue }
+          };
+          if (user && user.id) {
+            cell.userEnteredFormat = {
+              backgroundColor: rgbColors[user.pos],
+              horizontalAlignment,
+              textFormat: {
+                foregroundColor: rgbFontColor[user.pos],
+                //fontFamily: string,
+                //"fontSize": integer,
+                bold: true,
+                //"italic": boolean,
+                //"strikethrough": boolean,
+                //"underline": boolean,                                            
+              },
+              borders: {
+                bottom: {
+                  style: 'SOLID',
+                  width: 1,
+                  color: {
+                    blue: 0,
+                    green: 1,
+                    red: 0
+                  }
+                }
+              }
+            };
+          } else {
+            cell.userEnteredFormat = {
+              horizontalAlignment,
+              backgroundColor: cval ? {
+                blue: 0,
+                green: 1,
+                red: 1
+              } : {
+                blue: 1,
+                green: 1,
+                red: 1
+              },
+            }
+          }
+          return cell;
+        })
+      };
+    });
+    
+    const endRowIndex = data.length + userData.length + 1;
+    const updateData = {
+      requests: [
+        {
+          updateCells: {
+            fields: '*',
+            range: {
+              sheetId,
+              startColumnIndex: 0,
+              endColumnIndex,
+              startRowIndex: 0,
+              endRowIndex
+            },
+            rows: [...rowData, ...userData]
+          }
+        }
+      ]
+    };
+
+    if (endRowIndex > sheetInfo.rowCount || endColumnIndex > sheetInfo.columnCount) {
+      const requests = [];
+      if (endColumnIndex > sheetInfo.columnCount) {
+        requests.push({
+          appendDimension: {
+            sheetId,
+            dimension: 'COLUMNS',
+            length: endColumnIndex - sheetInfo.columnCount,
+          }
+        })
+      }
+      if (endRowIndex > sheetInfo.rowCount) {
+        requests.push({
+          appendDimension: {
+            sheetId,
+            dimension: 'ROWS',
+            length: endRowIndex - sheetInfo.rowCount ,
+          }
+        })
+      }
+      if (requests.length) {        
+        console.log(`updating column endColumnIndex=${endColumnIndex} sheetInfo.columnCount=${sheetInfo.columnCount} ${endColumnIndex > sheetInfo.columnCount}` );
+        console.log({
+          sheetId,
+          dimension: 'COLUMNS',
+          length: endColumnIndex - sheetInfo.columnCount,
+        })
+        await sheet.doBatchUpdate({ requests });
+        console.log('column updated');
+      }
+    }
+    await sheet.doBatchUpdate({
+      requests: [
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 0,
+              endIndex: endColumnIndex
+            },
+            properties: {
+              pixelSize: CELLSIZE
+            },
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: 0,
+              endIndex: endRowIndex
+            },
+            properties: {
+              pixelSize: CELLSIZE
+            },
+            fields: 'pixelSize'
+          }
+        }
+      ]
     })
-    await sheet.updateSheet('1p7W0Gwh88tCSiEA7Y6S_tVfyTMMbzotjaSZmfgEpDHY', `Sheet1!C3:AV12`, data);    
+    
+    
+    //fs.writeFileSync('test.json', JSON.stringify(updateData, null, 2))
+    //fs.writeFileSync('debugblockSits.json', JSON.stringify(blockSits,null,2))
+
+    await sheet.doBatchUpdate(updateData);
   }
 
 }
 
 if (isLocal) {
   myFunction().catch(err => {
-    console.log(err)
+    console.log(get(err, 'response.body'));    
   });
 }
