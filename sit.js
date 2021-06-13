@@ -236,7 +236,11 @@ async function myFunction() {
           if (fited) return;
           if (side === 'left') {
             if (curRow[0].user) return;
-            for (let i = 0; i < who.quantity; i++) curRow[i].user = who;
+            for (let i = 0; i < who.quantity; i++){
+              if (!curRow[i].user)
+                curRow[i].user = who;
+              else return fit(who); //this needs testing, i.e. we grow out of current row.
+            } 
             who.posInfo = {
               block: blkMap[blki],
               row,
