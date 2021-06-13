@@ -10,6 +10,8 @@ const { get } = require('lodash');
 
 const sheetName = 'Sheet1';
 
+const credentials = require('./credentials.json')
+const preSits = credentials.preSits;
 function getNextSundays() {
   let cur = new Date();
   const oneday = 24 * 60 * 60 * 1000;
@@ -31,7 +33,7 @@ async function myFunction() {
   const nextSundays = getNextSundays();
   const nextSunday = nextSundays[0];
   console.log(`nextSunday=${nextSunday}`);
-  const authorizationToken = require('./credentials.json').eventBriteAuth;
+  const authorizationToken = credentials.eventBriteAuth;
   const ebFetch = async url => {
     console.log(`url=${url}`);
     if (isLocal) {
@@ -91,22 +93,38 @@ async function myFunction() {
   } 
   const names = pages.attendees.reduce((acc, att) => {
     let ord = acc.oid[att.order_id];
+    const key = `${att.profile.name}:${att.profile.email}`.toLocaleLowerCase();
+    const existing = acc.ary.find(a => a.key === key);
+    if (existing) {
+      existing.emails.push(att.profile.email);
+      existing.names.push(att.profile.name);
+      return acc;
+    }
     if (!ord) {
       ord = {
         quantity: 0,
         emails: [],
         names: [],
+        key,
         pos: acc.ary.length,
         id: acc.ary.length + 1,
       };
-      acc.oid[att.order_id] = ord;
+      acc.oid[att.order_id] = ord;      
       acc.ary.push(ord);
     }
     ord.quantity++;
     ord.emails.push(att.profile.email);
     ord.names.push(att.profile.name);
     return acc;
-  }, { ary: [], oid: {}}).ary;  
+  }, {
+    ary: preSits.map((key,pos) => ({
+      quantity: 1,
+      emails: [],
+      names: [],
+      key: key.toLocaleLowerCase(),
+      pos,
+      id: pos+1
+  })), oid: {}}).ary;  
 
   let colors = [[0, 0, 255], [0, 255, 0], [255, 0, 0], [0, 255, 255], [255, 0, 255], [255, 255, 0]];
   let fontColor = ['#ffff00', '#ff00ff', '#00ffff', '#000000', '#000000', '#000000'];
