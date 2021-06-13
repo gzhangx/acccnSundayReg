@@ -391,7 +391,7 @@ async function myFunction() {
                       borders: {
                         bottom: {
                           style: 'SOLID',
-                          width: 3,
+                          width: 1,
                           color: {
                             blue: 0,
                             green: 255,
@@ -403,6 +403,15 @@ async function myFunction() {
                   } else {
                     cell.userEnteredFormat = {
                       horizontalAlignment,
+                      backgroundColor: cval?{
+                        blue: 0,
+                        green: 1,
+                        red: 1
+                      } : {
+                          blue: 1,
+                          green: 1,
+                          red: 1
+                      },
                     }
                   }
                   return cell;
@@ -425,6 +434,15 @@ async function myFunction() {
           }
         })
       }
+      if (data.length > sheetInfo.rowCount) {
+        requests.push({
+          appendDimension: {
+            sheetId,
+            dimension: 'ROWS',
+            length: data.length - sheetInfo.rowCount,
+          }
+        })
+      }
       if (requests.length) {        
         console.log(`updating column endColumnIndex=${endColumnIndex} sheetInfo.columnCount=${sheetInfo.columnCount} ${endColumnIndex > sheetInfo.columnCount}` );
         console.log({
@@ -436,6 +454,38 @@ async function myFunction() {
         console.log('column updated');
       }
     }
+    await sheet.doBatchUpdate({
+      requests: [
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 0,
+              endIndex: endColumnIndex
+            },
+            properties: {
+              pixelSize: CELLSIZE
+            },
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: 0,
+              endIndex: endRowIndex
+            },
+            properties: {
+              pixelSize: CELLSIZE
+            },
+            fields: 'pixelSize'
+          }
+        }
+      ]
+    })
     
     
     //fs.writeFileSync('test.json', JSON.stringify(updateData, null, 2))
