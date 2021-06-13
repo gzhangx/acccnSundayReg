@@ -77,7 +77,22 @@ async function getClient(name) {
   return getClientFor(name, name => credsJson.googleSheet[name]);
 }
 
-async function test() {
+async function testinit() {
+  const ccc = credsJson.googleSheet['gzprem'];
+  console.log(ccc);
+  const { client_secret, client_id } = ccc;
+  const rrr = await request.post(`https://oauth2.googleapis.com/token`).type('form').send({
+    code: '4/1AY0e-g4gSM4Zm0NBRqIK_w8AqSO2jXwlqr9ytEQV18WWboYtrvA8GT6xJkk',
+    redirect_uri: 'urn:ietf:wg:oauth:2.0:oob',
+    client_id: '581761652549-4r9oqnm2ji22ihtgetj07g761f7acvng.apps.googleusercontent.com',
+    client_secret,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    grant_type: 'authorization_code',
+  }).then(r => r.body);
+  console.log(rrr);
+  return;
+}
+async function test() {  
   const cli = await getClient('gzprem');
 
   const id = '1MO27odjCsxk6MWL0DygubU53hrtt3OB8SEnqjpUHJ-U';

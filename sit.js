@@ -366,7 +366,7 @@ async function myFunction() {
 
   } else {
     const client = await gs.getClient('gzprem');
-    const sheet = client.getSheetOps('1K4TFtYq7TVlKBifMfihTEiEclcVuScwOdksACEgdlwE');
+    const sheet = client.getSheetOps(credentials.sheetId);
     const data = [];
     const debugCOLLimit = 30;
     for (let i = 0; i < STARTRow + numRows; i++) {
