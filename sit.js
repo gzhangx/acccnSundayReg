@@ -9,9 +9,85 @@ const { get } = require('lodash');
 //const cardStatementData = await sheet.readSheet('A', 'ChaseCard!A:F')
 
 const sheetName = 'Sheet1';
-
 const credentials = require('./credentials.json')
+
 const preSits = credentials.preSits;
+
+function parseSits() {
+  const lines = fs.readFileSync('./sitConfig.txt').toString().split('\n');
+  const starts = lines[0].split('\t').reduce((acc, l,i) => {
+    if (l === 'R') acc.push(i);
+    return acc;
+  }, []);
+  const getBlk = p => {
+    if (p > starts[2]) {
+      if (p > starts[3]) return 3;
+      return 2;
+    }
+    if (p < starts[1]) return 0;
+    return 1;
+  };
+  const blkInfo = lines.slice(1).reduce((acc, l, curRow) => {
+    return l.split('\t').reduce((acc, v, i) => {
+      const blki = getBlk(i);
+      if (v === 'X') {
+        let blk = acc[blki];
+        if (!blk) {
+          blk = { min: i, max: i, minRow: curRow, maxRow: curRow, sits:[] };
+          acc[blki] = blk;
+        }
+        if (blk.min > i) blk.min = i;
+        if (blk.max < i) blk.max = i;
+        blk.maxRow = curRow;
+        blk.sits.push({
+          col: i,
+          row: curRow,
+        })
+      }
+      return acc;
+    },acc)
+  }, []).map(b => {
+    return {
+      ...b,
+      cols: b.max - b.min + 1,
+      rows: b.maxRow - b.minRow + 1,
+      sits: b.sits.map(s => ({
+        col: s.col - b.min,
+        row: s.row - b.minRow,
+      }))
+    }
+  });
+  //console.log(starts);
+  console.log(blkInfo.map(b => ({
+    cols: b.cols,
+    rows: b.rows,
+  })));
+  return blkInfo.map((b,bi) => {
+    const rows = [];
+    for (let r = 0; r < b.rows; r++) {
+      const rr = [];
+      rows[r] = rr;
+      for (let c = 0; c < b.cols; c++) {
+        rr[c] = null;
+      }
+    }
+
+    b.sits.forEach(s => {
+      rows[s.row][s.col] = {
+        ...s,
+      };
+    })
+    //console.log(rows.map(r => r.join('')).join('\n'));
+    return {
+      ...b,
+      sits: rows,
+    };
+  });
+}
+const pureSitConfig = parseSits();
+//console.log(pureSitConfig.map(s=>({cols: s.cols, rows: s.rows})))
+//return console.log(pureSitConfig.map(r => r.sits.map(v => v.map(vv => vv ? 'X' : ' ').join('')).join('\n')).join('\n'));
+
 function getNextSundays() {
   let cur = new Date();
   const oneday = 24 * 60 * 60 * 1000;
@@ -161,10 +237,11 @@ async function myFunction() {
     ];
   const blockSpacing = 2;
   const fMax = (acc, cr) => acc < cr ? cr : acc;
-  const blockColMaxes = blockConfig.map(r => r.reduce(fMax, 0));
-  
+  //const blockColMaxes = blockConfig.map(r => r.reduce(fMax, 0));
+  const blockColMaxes = pureSitConfig.map(r=>r.cols);
   const numCols = blockColMaxes.reduce((acc, r) => acc + r + blockSpacing, 0);
-  const numRows = blockConfig.map(r => r.length).reduce(fMax, 0);
+  //const numRows = blockConfig.map(r => r.length).reduce(fMax, 0);
+  const numRows = pureSitConfig.map(r => r.rows).reduce(fMax, 0);
   
   const STARTCol = 4;
   const STARTRow = 3;
@@ -186,8 +263,36 @@ async function myFunction() {
 
 
 
-  const blockSits = blockConfig.map((blk, bi) => {
+  const blockSitsOrig = blockConfig.map((blk, bi) => {
     return blk.map((rowCnt, curRow) => {
+      const r = [];
+      for (let i = 0; i < rowCnt; i++) {
+        r[i] = {
+          user: null,
+          uiPos: {
+            col: blockStarts[bi] + i,
+            row: STARTRow + curRow,
+          }
+        }
+      }
+      return r;
+    });
+  });
+
+  const blockSits = pureSitConfig.map((blk, bi) => {
+    return blk.sits.map(s => {
+      return s.map(r => {
+        if (!r) return null;
+        return {
+          user: null,
+          uiPos: {
+            col: blockStarts[bi] + r.col,
+            row: STARTRow + r.row,
+          }
+        }
+      });
+    });
+    return blk.sits((rowCnt, curRow) => {
       const r = [];
       for (let i = 0; i < rowCnt; i++) {
         r[i] = {
@@ -230,7 +335,9 @@ async function myFunction() {
     for (let row = 0; row < numRows; row++) {
       for (let blki = 0; blki < blockSits.length; blki++) {
         const curBlock = blockSits[blki];
-        const curRow = curBlock[row];
+        if (!curBlock) continue;
+        const curRow = curBlock[row]?.filter(x=>x);
+        if (!curRow) break;
         ['left', 'right'].forEach(side => {
           if (fited) return;
           if (side === 'left') {
@@ -275,7 +382,8 @@ async function myFunction() {
       for (let row = 0; row < numRows; row++) {
         for (let blki = 0; blki < blockSits.length; blki++) {
           const curBlock = blockSits[blki];
-          const curRow = curBlock[row];
+          if (!curBlock) continue;
+          const curRow = curBlock[row].filter(x=>x);
           let rowTotal = 0;
           for (let i = 0; i < curRow.length; i++) {
             if (!curRow[i].user) rowTotal++;
@@ -382,9 +490,15 @@ async function myFunction() {
     blockSits.forEach(blk => {
       blk.forEach(r => {
         r.forEach(c => {
+          if (!c) return;
           //data[c.uiPos.row - STARTRow][c.uiPos.col - STARTCol] = c.user ? c.user.id : 'e';
           //if (c.uiPos.col < debugCOLLimit) //debug
-          data[c.uiPos.row-1][c.uiPos.col-1] = c;
+          try {
+            data[c.uiPos.row - 1][c.uiPos.col - 1] = c;
+          } catch (err) {
+            data[c.uiPos.row - 1][c.uiPos.col - 1] = c;
+            throw err;
+          }
         })
       })
     });
@@ -571,6 +685,6 @@ async function myFunction() {
 
 if (isLocal) {
   myFunction().catch(err => {
-    console.log(get(err, 'response.body'));    
+    console.log(get(err, 'response.body') || err);    
   });
 }
