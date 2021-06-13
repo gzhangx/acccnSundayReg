@@ -96,7 +96,8 @@ async function myFunction() {
         quantity: 0,
         emails: [],
         names: [],
-        id: acc.ary.length,
+        pos: acc.ary.length,
+        id: acc.ary.length + 1,
       };
       acc.oid[att.order_id] = ord;
       acc.ary.push(ord);
@@ -109,17 +110,26 @@ async function myFunction() {
 
   let colors = [[0, 0, 255], [0, 255, 0], [255, 0, 0], [0, 255, 255], [255, 0, 255], [255, 255, 0]];
   let fontColor = ['#ffff00', '#ff00ff', '#00ffff', '#000000', '#000000', '#000000'];
+  let rgbFontColor = [[255, 255, 0], [255, 0, 255], [0, 255, 255], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
   while (colors.length < names.length) {
     colors.map(c => c.map(c => parseInt(c / 2))).forEach(c => {
       if (c[0] + c[1] + c[2] < 255 + 128) {
         fontColor.push('#ffffff');
+        rgbFontColor.push([255,255,255])
       } else {
         fontColor.push('#000000')
+        rgbFontColor.push([0, 0, 0])
       }
       return colors.push(c);
     });
   }
 
+  const rgb255toClr = rgb => ['red', 'green', 'blue'].reduce((acc, name, i) => {
+    acc[name] = rgb[i] / 255.0;
+    return acc;
+  }, {});
+  const rgbColors = colors.map(rgb255toClr);
+  rgbFontColor = rgbFontColor.map(rgb255toClr)
   colors = colors.map(c => `#${c.map(c => c.toString(16).padStart(2,'0')).join('')}`);
 
 
@@ -197,6 +207,7 @@ async function myFunction() {
 
 
   const siteSpacing = 3;
+  const blkMap = ['A','B','C','D']
   const fit = (who) => {
     let fited = false;
     for (let row = 0; row < numRows; row++) {
@@ -208,6 +219,11 @@ async function myFunction() {
           if (side === 'left') {
             if (curRow[0].user) return;
             for (let i = 0; i < who.quantity; i++) curRow[i].user = who;
+            who.posInfo = {
+              block: blkMap[blki],
+              row,
+              side: 'A',              
+            }
             fited = true;
             return;
           } else if (side === 'right') {
@@ -221,6 +237,11 @@ async function myFunction() {
               curRow[ind - i].user = who;
             }
             fited = true;
+            who.posInfo = {
+              block: blkMap[blki],
+              row,
+              side: 'C',
+            }
           }
         });
       }
@@ -228,6 +249,8 @@ async function myFunction() {
     if (!fited) {
       let maxAva = 0;
       let curMaxRow = null;
+      let curMaxRowNumber = -1;
+      let curMaxRowBlk = -1;
       for (let row = 0; row < numRows; row++) {
         for (let blki = 0; blki < blockSits.length; blki++) {
           const curBlock = blockSits[blki];
@@ -239,6 +262,8 @@ async function myFunction() {
           if (rowTotal > maxAva) {
             maxAva = rowTotal;
             curMaxRow = curRow;
+            curMaxRowNumber = row;
+            curMaxRowBlk = blki;
           }
         }
       }      
@@ -273,6 +298,11 @@ async function myFunction() {
             const left = Math.round((bestSpacing.size - who.quantity) / 2);
             for (let i = 0; i < who.quantity; i++)
               curMaxRow[bestSpacing.start + left + i].user = who;
+            who.posInfo = {
+              block: blkMap[curMaxRowBlk],
+              row: curMaxRowNumber,
+              side: 'B',
+            }
           }
         }
       }
@@ -347,18 +377,28 @@ async function myFunction() {
     }
     const { sheetId } = sheetInfo;
     const userInfo = [
-      ['Code', 'Quantity', 'Name', 'Email'],
-      ...names.map(n => [n.id, n.quantity, n.names.join(','), n.emails.join(',')])
+      ['Code', 'Quantity', '','Pos','','', 'Name', 'Email'],
+      ...names.map(n => [n.id, n.quantity, n.id, n.posInfo.block, n.posInfo.side, n.posInfo.row.toString(), n.names.join(','), n.emails.join(',')])
     ];
+    
     const userData = userInfo.map(u => {
-      return [u[0].toString(), '', '', '', u[1].toString(), '', '', '', u[2], '', '', '', '', '', '', u[3]];
+      return [u[0].toString(), '', '', '', u[1].toString(), '', '', '', '', {type:'userColor', val:u[2]},u[3],u[4],u[5],'', u[6], '', '', '', '', '', '', u[7]];
     }).map(r => {
       return {
-        values: r.map(stringValue => {
+        values: r.map(o => {
+          let stringValue = o;
+          if (typeof (o) === 'object') {
+            stringValue = '';
+          }
           const horizontalAlignment = 'LEFT';
           const cell = {
             userEnteredValue: { stringValue }
           };
+          if (typeof (o) === 'object') {
+            cell.userEnteredFormat = {
+              backgroundColor: rgbColors[o.val],
+            }
+          }
           return cell;
         })
       };
@@ -374,11 +414,7 @@ async function myFunction() {
           };
           if (user && user.id) {
             cell.userEnteredFormat = {
-              backgroundColor: {
-                blue: 0.5,
-                green: 0.5,
-                red: 0.5
-              },
+              backgroundColor: rgbColors[user.pos],
               horizontalAlignment,
               textFormat: {
                 foregroundColor: {
