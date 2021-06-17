@@ -175,8 +175,10 @@ async function myFunction() {
     id: 1
   }
   const names = pages.attendees.reduce((acc, att) => {
+    if (att.cancelled) return acc;
     let ord = acc.oid[att.order_id];
     const key = `${att.profile.name}:${att.profile.email}`.toLocaleLowerCase();
+    //console.log(`attend ${key} order ${att.order_id} ${att.cancelled}  ${att.status}`);
     const existing = preSits.find(k => k.toLowerCase() === key);
     if (existing) {
       ord = preSitItem;      
@@ -330,10 +332,12 @@ async function myFunction() {
 
   const siteSpacing = 3;
   const blkMap = ['A','B','C','D']
-  const fit = (who) => {
+  const fit = (who, reverse=false) => {
     let fited = false;
-    for (let row = 0; row < numRows; row++) {
+    for (let rowInc = 0; rowInc < numRows; rowInc++) {
+      const row = reverse ? numRows - rowInc - 1 : rowInc;
       for (let blki = 0; blki < blockSits.length; blki++) {
+        if (credentials.ignoreBlocks[blki]) continue;
         const curBlock = blockSits[blki];
         if (!curBlock) continue;
         const curRow = curBlock[row]?.filter(x=>x);
@@ -345,7 +349,7 @@ async function myFunction() {
             for (let i = 0; i < who.quantity; i++){
               if (!curRow[i].user)
                 curRow[i].user = who;
-              else return fit(who); //this needs testing, i.e. we grow out of current row.
+              else return fit(who, reverse); //this needs testing, i.e. we grow out of current row.
             } 
             who.posInfo = {
               block: blkMap[blki],
@@ -439,7 +443,9 @@ async function myFunction() {
     return fited;
   };
 
-  names.forEach(fit);
+  names.forEach(n => {
+    fit(n, credentials.preSitsBack.filter(b=>n.key === b.toLowerCase()).length);
+  });
 
 
   if (!isLocal) {
