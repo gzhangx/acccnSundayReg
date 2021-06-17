@@ -58,10 +58,10 @@ function parseSits() {
     }
   });
   //console.log(starts);
-  console.log(blkInfo.map(b => ({
-    cols: b.cols,
-    rows: b.rows,
-  })));
+  //console.log(blkInfo.map(b => ({
+  //  cols: b.cols,
+  //  rows: b.rows,
+  //})));
   return blkInfo.map((b,bi) => {
     const rows = [];
     for (let r = 0; r < b.rows; r++) {
@@ -128,7 +128,7 @@ async function myFunction() {
       return pages;
     }
   }
-  const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/?name_filter=' + encodeURIComponent('ACCCN 北堂中文实体崇拜注册(测试') + '&time_filter=current_future');
+  const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/?name_filter=' + encodeURIComponent('ACCCN 北堂中文实体崇拜注册') + '&time_filter=current_future');
   const eventsMapped = eventArys.events.map(e => {
     return {
       id: e.id,
