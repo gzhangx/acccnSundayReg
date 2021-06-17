@@ -48,6 +48,7 @@ function parseSits() {
     },acc)
   }, []).map(b => {
     return {
+      letterCol: b.sits[0].col === b.min ? 0:b.max - b.min,
       ...b,
       cols: b.max - b.min + 1,
       rows: b.maxRow - b.minRow + 1,
@@ -80,6 +81,9 @@ function parseSits() {
     //console.log(rows.map(r => r.join('')).join('\n'));
     return {
       ...b,
+      goodRowsToUse: rows.map((r,i) => {
+        return !(i%2) || i === rows.length-1
+      }),
       sits: rows,
     };
   });
@@ -228,15 +232,6 @@ async function myFunction() {
   colors = colors.map(c => `#${c.map(c => c.toString(16).padStart(2,'0')).join('')}`);
 
 
-
-
-  const blockConfig =
-    [
-      [8, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-      [8, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-      [8, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-      [8, 10, 10, 10, 10, 10, 10, 10, 10, 10]
-    ];
   const blockSpacing = 2;
   const fMax = (acc, cr) => acc < cr ? cr : acc;
   //const blockColMaxes = blockConfig.map(r => r.reduce(fMax, 0));
@@ -264,23 +259,6 @@ async function myFunction() {
   }).res;
 
 
-
-  const blockSitsOrig = blockConfig.map((blk, bi) => {
-    return blk.map((rowCnt, curRow) => {
-      const r = [];
-      for (let i = 0; i < rowCnt; i++) {
-        r[i] = {
-          user: null,
-          uiPos: {
-            col: blockStarts[bi] + i,
-            row: STARTRow + curRow,
-          }
-        }
-      }
-      return r;
-    });
-  });
-
   const blockSits = pureSitConfig.map((blk, bi) => {
     return blk.sits.map(s => {
       return s.map(r => {
@@ -293,20 +271,7 @@ async function myFunction() {
           }
         }
       });
-    });
-    return blk.sits((rowCnt, curRow) => {
-      const r = [];
-      for (let i = 0; i < rowCnt; i++) {
-        r[i] = {
-          user: null,
-          uiPos: {
-            col: blockStarts[bi] + i,
-            row: STARTRow + curRow,
-          }
-        }
-      }
-      return r;
-    });
+    });    
   });
 
   //const headers = [];
@@ -334,9 +299,10 @@ async function myFunction() {
   const blkMap = ['A','B','C','D']
   const fit = (who, reverse=false) => {
     let fited = false;
-    for (let rowInc = 0; rowInc < numRows; rowInc++) {
+    for (let rowInc = 0; rowInc < numRows; rowInc++) {      
       const row = reverse ? numRows - rowInc - 1 : rowInc;
       for (let blki = 0; blki < blockSits.length; blki++) {
+        if (!pureSitConfig[blki].goodRowsToUse[rowInc]) continue;
         if (credentials.ignoreBlocks[blki]) continue;
         const curBlock = blockSits[blki];
         if (!curBlock) continue;
@@ -493,6 +459,22 @@ async function myFunction() {
       for (let j = 0; j < debugCOLLimit; j++)
         data[i][j] = null;
     }
+
+    //top col cord
+    pureSitConfig.forEach((bc,i) => {
+      data[STARTRow - 2][bc.letterCol + blockStarts[i]-1] = {
+        user: {
+        id:blkMap[i]
+      }}
+    });
+    for (let i = 0; i < numRows; i++) {
+      data[i+STARTRow-1][0] = {
+        user: {
+          id: i.toString()
+        }
+      }
+    }
+    
     blockSits.forEach(blk => {
       blk.forEach(r => {
         r.forEach(c => {
