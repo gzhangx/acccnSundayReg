@@ -128,7 +128,7 @@ async function myFunction() {
       return pages;
     }
   }
-  const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/?name_filter=' + encodeURIComponent('ACCCN 北堂中文实体崇拜注册') + '&time_filter=current_future');
+  const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/?name_filter=' + encodeURIComponent(credentials.eventTitle) + '&time_filter=current_future');
   const eventsMapped = eventArys.events.map(e => {
     return {
       id: e.id,
@@ -683,7 +683,23 @@ async function myFunction() {
     
     //fs.writeFileSync('test.json', JSON.stringify(updateData, null, 2))
     //fs.writeFileSync('debugblockSits.json', JSON.stringify(blockSits,null,2))
-
+    //endRowIndex > sheetInfo.rowCount ? endRowIndex : sheetInfo.rowCount,
+    if (sheetInfo.rowCount > endRowIndex) {
+      await sheet.doBatchUpdate({
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: 'ROWS',
+                startIndex: endRowIndex,
+                endIndex: sheetInfo.rowCount
+              }
+            }
+          },
+        ],
+      });
+    }
     await sheet.doBatchUpdate(updateData);
   }
 
