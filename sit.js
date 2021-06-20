@@ -5,14 +5,24 @@ const gs = require('./getSheet');
 const fs = require('fs');
 const request = require('superagent');
 const { get } = require('lodash');
-//const sheet = gs.createSheet();
-//const cardStatementData = await sheet.readSheet('A', 'ChaseCard!A:F')
+
 
 const sheetName = 'Sheet1';
 const credentials = require('./credentials.json')
+async function myFunction() {
+const client = await gs.getClient('gzprem');
+const sheet = client.getSheetOps(credentials.sheetId);
+const fixedInfo = await sheet.read(`'Fixed'!A1:D30`);
 
-const preSits = credentials.preSits;
+//const preSits = credentials.preSits || [];
+const preSits = fixedInfo.values.map(f => {
+  if (f[2])
+    return `${f[0].trim()}:${f[1].trim()}`;
+  return null;
+}).filter(x => x);
 
+
+const getDisplayRow = r => r + 1; //1 based
 function parseSits() {
   const lines = fs.readFileSync('./sitConfig.txt').toString().split('\n');
   const starts = lines[0].split('\t').reduce((acc, l,i) => {
@@ -33,11 +43,14 @@ function parseSits() {
       if (v === 'X') {
         let blk = acc[blki];
         if (!blk) {
-          blk = { min: i, max: i, minRow: curRow, maxRow: curRow, sits:[] };
+          blk = { min: i, max: i, minRow: curRow, maxRow: curRow, sits: [], rowColMin: {}, rowColMax: {} };
           acc[blki] = blk;
         }
         if (blk.min > i) blk.min = i;
         if (blk.max < i) blk.max = i;
+        if (!blk.rowColMin[curRow] && blk.rowColMin[curRow]!== 0 ) blk.rowColMin[curRow] = i;
+        if (i <= (blk.rowColMin[curRow] || 0)) blk.rowColMin[curRow] = i;
+        if (i >= (blk.rowColMax[curRow] || 0)) blk.rowColMax[curRow] = i;
         blk.maxRow = curRow;
         blk.sits.push({
           col: i,
@@ -46,16 +59,23 @@ function parseSits() {
       }
       return acc;
     },acc)
-  }, []).map(b => {
+  }, []).map(b => {    
     return {
       letterCol: b.sits[0].col === b.min ? 0:b.max - b.min,
       ...b,
       cols: b.max - b.min + 1,
       rows: b.maxRow - b.minRow + 1,
-      sits: b.sits.map(s => ({
-        col: s.col - b.min,
-        row: s.row - b.minRow,
-      }))
+      sits: b.sits.map(s => {
+        const rowColMin = b.rowColMin[s.row];
+        const rowColMax = b.rowColMax[s.row];
+        const rowCols = rowColMax - rowColMin;
+        const colPos = s.col - rowColMin;
+        return ({
+          side: colPos < rowCols/3?'A': colPos> rowCols*2/3?'C':'B',
+          col: s.col - b.min,
+          row: s.row - b.minRow,
+        });
+      })
     }
   });
   //console.log(starts);
@@ -109,7 +129,7 @@ function getDateStr(date) {
   return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
 }
 
-async function myFunction() {
+
   const nextSundays = getNextSundays();
   const nextSunday = nextSundays[0];
   console.log(`nextSunday=${nextSunday}`);
@@ -171,13 +191,38 @@ async function myFunction() {
         })
     }
   }
-  const preSitItem = {
-    quantity: 0,
-    emails: [],
-    names: [],
-    pos: 0,
-    id: 1
-  }
+
+  const preSiteItems = fixedInfo.values.filter(v => v[2]).map((v,pos) => {    
+    const name = v[0];
+    const email = v[1];
+    const blkRowId = v[2];
+    const rc = blkRowId.slice(1).split('-');
+    const key = `${name}:${email}`.toLocaleLowerCase();
+    return {
+      quantity: 1,
+      emails: [email],
+      names: [name],
+      key,
+      pos,
+      id: pos + 1,
+      blkRowId,
+      posInfo: {
+        block: blkRowId[0],
+        row: parseInt(rc[0]),
+        rowInfo: null,
+        side: rc[1],
+        //block: blkMap[blki],
+        //row,
+        //rowInfo: curRow[0],
+        //side: 'A',
+      }
+    }
+  });
+  const preSiteItemsByBlkRowId = preSiteItems.reduce((acc, r) => {
+    acc[r.blkRowId] = r;
+    return acc;
+  }, {});
+  //return console.log(preSiteItems)
   const names = pages.attendees.reduce((acc, att) => {
     if (att.cancelled) return acc;
     let ord = acc.oid[att.order_id];
@@ -185,7 +230,7 @@ async function myFunction() {
     //console.log(`attend ${key} order ${att.order_id} ${att.cancelled}  ${att.status}`);
     const existing = preSits.find(k => k.toLowerCase() === key);
     if (existing) {
-      ord = preSitItem;      
+      return acc;
     }
     if (!ord) {
       ord = {
@@ -204,7 +249,7 @@ async function myFunction() {
     ord.names.push(att.profile.name);
     return acc;
   }, {
-    ary: [preSitItem], oid: {}
+    ary: preSiteItems, oid: {}
   }).ary;
 
   let colors = [[0, 0, 255], [0, 255, 0], [255, 0, 0], [0, 255, 255], [255, 0, 255], [255, 200, 200]];
@@ -259,17 +304,30 @@ async function myFunction() {
   }).res;
 
 
+  const blkMap = ['A', 'B', 'C', 'D']
   const blockSits = pureSitConfig.map((blk, bi) => {
     return blk.sits.map(s => {
       return s.map(r => {
         if (!r) return null;
-        return {
+
+        const blk = {
+          ...r,
+          blkRow: `${blkMap[bi]}${r.row}`,
+          blkRowId: `${blkMap[bi]}${r.row}-${r.col}`,
           user: null,
           uiPos: {
             col: blockStarts[bi] + r.col,
             row: STARTRow + r.row,
           }
+        };
+        const user = preSiteItemsByBlkRowId[blk.blkRowId];
+        if (user) {
+          blk.user = user;
+          user.posInfo.rowInfo = blk;
+          //user.posInfo.side = `${blk.side}-${user.posInfo.side}`;
+          user.posInfo.side = blk.side;
         }
+        return blk;
       });
     });    
   });
@@ -296,8 +354,9 @@ async function myFunction() {
 
 
   const siteSpacing = 3;
-  const blkMap = ['A','B','C','D']
-  const fit = (who, reverse=false) => {
+  
+  const fit = (who, reverse = false) => {
+    if (who.posInfo) return true;
     let fited = false;
     for (let rowInc = 0; rowInc < numRows; rowInc++) {      
       const row = reverse ? numRows - rowInc - 1 : rowInc;
@@ -320,12 +379,13 @@ async function myFunction() {
             who.posInfo = {
               block: blkMap[blki],
               row,
+              rowInfo: curRow[0],
               side: 'A',              
             }
             fited = true;
             return;
           } else if (side === 'right') {
-            let ind = curRow.length - 1;
+            const ind = curRow.length - 1;
             if (curRow[ind].user) return;
             const toSearch = ind - who.quantity - siteSpacing;
             for (let i = ind; i >= toSearch; i--) {
@@ -338,6 +398,7 @@ async function myFunction() {
             who.posInfo = {
               block: blkMap[blki],
               row,
+              rowInfo: curRow[ind],
               side: 'C',
             }
           }
@@ -400,6 +461,7 @@ async function myFunction() {
             who.posInfo = {
               block: blkMap[curMaxRowBlk],
               row: curMaxRowNumber,
+              rowInfo: curMaxRow[bestSpacing.start + left],
               side: 'B',
             }
           }
@@ -410,7 +472,7 @@ async function myFunction() {
   };
 
   names.forEach(n => {
-    fit(n, credentials.preSitsBack.filter(b=>n.key === b.toLowerCase()).length);
+    fit(n);
   });
 
 
@@ -444,8 +506,7 @@ async function myFunction() {
     )
 
   } else {
-    const client = await gs.getClient('gzprem');
-    const sheet = client.getSheetOps(credentials.sheetId);
+    
     const data = [];
     const debugCOLLimit = 30;
     for (let i = 0; i < STARTRow + numRows; i++) {
@@ -470,7 +531,7 @@ async function myFunction() {
     for (let i = 0; i < numRows; i++) {
       data[i+STARTRow-1][0] = {
         user: {
-          id: i.toString()
+          id: getDisplayRow(i).toString()
         }
       }
     }
@@ -500,12 +561,19 @@ async function myFunction() {
     }
     const { sheetId } = sheetInfo;
     const userInfo = [
-      ['Code', 'Quantity', '','Pos','','', 'Name', 'Email'],
-      ...names.map(n => [n.id, n.quantity, n.pos, n.posInfo.block, n.posInfo.side, n.posInfo.row.toString(), n.names.join(','), n.emails.join(',')])
+      ['Code', 'Quantity', '','Pos','','', 'Name', 'Email','ActualPos'],
+      ...names.map(n => [n.id, n.quantity, n.pos, n.posInfo.block, getDisplayRow(n.posInfo.row).toString(), n.posInfo.side,  n.names.join(','), n.emails.join(','), `r=${n.posInfo.rowInfo.row} c=${n.posInfo.rowInfo.col}`])
     ];
-    
+ 
+    // console.log('names==>')
+    // console.log(names.map(n => {
+    //   return {
+    //     rowInfof: n.posInfo.rowInfo,
+    //     ...n,
+    //   }
+    // }));
     const userData = userInfo.map(u => {
-      return [u[0].toString(), '', '', '', u[1].toString(), '', '', '', '', {type:'userColor', val:u[2]},u[3],u[4],u[5],'', u[6], '', '', '', '', '', '', u[7]];
+      return [u[0].toString(), '', '', '', u[1].toString(), '', '', '', '', { type: 'userColor', val: u[2] }, u[3], u[4], u[5], '', u[6], '', '', '', '', '', '', u[7], '', '', '', '', '', '', '', '', '', '',u[8]];
     }).map(r => {
       return {
         values: r.map(o => {
