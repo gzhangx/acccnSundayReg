@@ -4,7 +4,7 @@ const isLocal = true;
 const gs = require('./getSheet');
 const fs = require('fs');
 const request = require('superagent');
-const { get } = require('lodash');
+const { get, sortBy } = require('lodash');
 
 
 const sheetName = 'Sheet1';
@@ -202,6 +202,7 @@ function getDateStr(date) {
       quantity: 1,
       emails: [email],
       names: [name],
+      name,
       key,
       pos,
       id: pos + 1,
@@ -223,7 +224,7 @@ function getDateStr(date) {
     return acc;
   }, {});
   //return console.log(preSiteItems)
-  const names = pages.attendees.reduce((acc, att) => {
+  const names = sortBy(pages.attendees.reduce((acc, att) => {
     if (att.cancelled) return acc;
     let ord = acc.oid[att.order_id];
     const key = `${att.profile.name}:${att.profile.email}`.toLocaleLowerCase();
@@ -240,6 +241,7 @@ function getDateStr(date) {
         key,
         pos: acc.ary.length,
         id: acc.ary.length + 1,
+        name: att.profile.name,
       };
       acc.oid[att.order_id] = ord;      
       acc.ary.push(ord);
@@ -250,7 +252,7 @@ function getDateStr(date) {
     return acc;
   }, {
     ary: preSiteItems, oid: {}
-  }).ary;
+  }).ary,'name');
 
   let colors = [[0, 0, 255], [0, 255, 0], [255, 0, 0], [0, 255, 255], [255, 0, 255], [255, 200, 200]];
   let fontColor = ['#ffff00', '#ff00ff', '#00ffff', '#000000', '#000000', '#000000'];
