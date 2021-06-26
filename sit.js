@@ -160,7 +160,7 @@ function getDateStr(date) {
       name: e.name,
       status: e.status,
     }
-  }).filter(s=>s.status === 'liev');
+  }).filter(s=>s.status === 'live');
   console.log(eventsMapped)
   let nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
   let nsi = 0;
