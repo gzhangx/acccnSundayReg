@@ -156,9 +156,12 @@ function getDateStr(date) {
   const eventsMapped = eventArys.events.map(e => {
     return {
       id: e.id,
-      date: e.start.local.slice(0, 10)
+      date: e.start.local.slice(0, 10),
+      name: e.name,
+      status: e.status,
     }
-  });
+  }).filter(s=>s.status === 'liev');
+  console.log(eventsMapped)
   let nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
   let nsi = 0;
   while (!nextGoodEvent && nsi < nextSundays.length) {
