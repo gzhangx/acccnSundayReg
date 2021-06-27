@@ -359,7 +359,29 @@ function getDateStr(date) {
 
 
   const siteSpacing = 3;
-  
+  const fitChore = who => {
+    if (who.posInfo) return true;
+    const blki = 1; //block B only
+    const curBlock = blockSits[blki];
+    for (let row = 0; row < numRows; row++) {
+      const curRow = curBlock[row]?.filter(x => x);
+      if (!curRow) break;
+      for (let i = 0; i < curRow.length; i++) {
+        const cri = curRow[i];
+        if (!cri) continue;
+        if (cri.user) continue;
+        cri.user = who;
+        who.posInfo = {
+          block: blkMap[blki],
+          row,
+          rowInfo: cri,
+          side: cri.side,
+        }
+        return true;
+      }
+    }
+    return false;
+  }
   const fit = (who, reverse = false) => {
     if (who.posInfo) return true;
     let fited = false;
@@ -419,6 +441,9 @@ function getDateStr(date) {
         for (let blki = 0; blki < blockSits.length; blki++) {
           const curBlock = blockSits[blki];
           if (!curBlock) continue;
+          if (!curBlock[row]) {
+            continue;
+          }
           const curRow = curBlock[row].filter(x=>x);
           let rowTotal = 0;
           for (let i = 0; i < curRow.length; i++) {
@@ -476,8 +501,14 @@ function getDateStr(date) {
     return fited;
   };
 
+  const choreNames = ['詩 ','詩-']
+  names.filter(n => choreNames.find(c => n.name.startsWith(c))).forEach(n => {
+    fitChore(n);
+  })
   names.forEach(n => {
-    fit(n);
+    if (!fit(n)) {
+      console.log(`Warning, unable to fit ${n.name}`)
+    }
   });
 
 
@@ -567,7 +598,7 @@ function getDateStr(date) {
     const { sheetId } = sheetInfo;
     const userInfo = [
       ['Code', 'Quantity', '','Pos','','', 'Name', 'Email','ActualPos'],
-      ...names.map(n => [n.id, n.quantity, n.pos, n.posInfo.block, getDisplayRow(n.posInfo.row).toString(), n.posInfo.side,  n.names.join(','), n.emails.join(','), `r=${n.posInfo.rowInfo.row} c=${n.posInfo.rowInfo.col}`])
+      ...names.filter(f=>f.posInfo).map(n => [n.id, n.quantity, n.pos, n.posInfo.block, getDisplayRow(n.posInfo.row).toString(), n.posInfo.side,  n.names.join(','), n.emails.join(','), `r=${n.posInfo.rowInfo.row} c=${n.posInfo.rowInfo.col}`])
     ];
  
     // console.log('names==>')
