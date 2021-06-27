@@ -391,9 +391,9 @@ function getDateStr(date) {
         if (!pureSitConfig[blki].goodRowsToUse[rowInc]) continue;
         if (credentials.ignoreBlocks[blki]) continue;
         const curBlock = blockSits[blki];
-        if (!curBlock) continue;
+        //if (!curBlock) continue;
         const curRow = curBlock[row]?.filter(x=>x);
-        if (!curRow) break;
+        if (!curRow) continue;
         ['left', 'right'].forEach(side => {
           if (fited) return;
           if (side === 'left') {
@@ -437,63 +437,74 @@ function getDateStr(date) {
       let curMaxRow = null;
       let curMaxRowNumber = -1;
       let curMaxRowBlk = -1;
+      let curMaxRowStart = -1;
+      let curMaxRowEnd = -1;
       for (let row = 0; row < numRows; row++) {
         for (let blki = 0; blki < blockSits.length; blki++) {
+          if (!pureSitConfig[blki].goodRowsToUse[row]) continue;
+          if (credentials.ignoreBlocks[blki]) continue;
           const curBlock = blockSits[blki];
           if (!curBlock) continue;
           if (!curBlock[row]) {
             continue;
           }
           const curRow = curBlock[row].filter(x=>x);
-          let rowTotal = 0;
+          //let rowTotal = 0;
+          let curAvaStart = -1;
+          let curAvaLen = -1;
           for (let i = 0; i < curRow.length; i++) {
-            if (!curRow[i].user) rowTotal++;
+            if (!curRow[i].user) {
+              if (curAvaStart < 0) {
+                curAvaStart = i;
+                curAvaLen = 1;
+              } else {
+                curAvaLen = i - curAvaStart + 1;
+              }
+              if (curAvaLen > maxAva) {
+                maxAva = curAvaLen;
+                curMaxRow = curRow;
+                curMaxRowNumber = row;
+                curMaxRowBlk = blki;
+                curMaxRowStart = curAvaStart;
+                curMaxRowEnd = i;
+              }
+            } else {
+              curAvaStart = -1;
+              curAvaLen = 0;
+            }
+            //if (!curRow[i].user) rowTotal++;
           }
-          if (rowTotal > maxAva) {
-            maxAva = rowTotal;
-            curMaxRow = curRow;
-            curMaxRowNumber = row;
-            curMaxRowBlk = blki;
-          }
+          //if (rowTotal > maxAva) {
+          //  maxAva = rowTotal;
+          //  curMaxRow = curRow;
+          //  curMaxRowNumber = row;
+          //  curMaxRowBlk = blki;
+          //}
         }
       }      
 
       if (curMaxRow) {
-        let curMax = 0, curStart = -1, curEnd = -1;
-        let bestSpacing = null;
-        for (let i = 0; i < curMaxRow.length; i++) {
-          const curUser = curMaxRow[i].user;
-          if (curStart < 0) {
-            if (!curUser) {
-              curStart = i;
-            }
-          } else {
-            if (curUser) {
-              curEnd = i;
-              const size = curEnd - curStart;
-              if (size > curMax) {
-                curMax = size;
-                bestSpacing = {
-                  start: curStart,
-                  end: curEnd - 1,
-                  size, 
-                }
-              }
-              curStart = -1;
-            }
-          }
-        }
+        const bestSpacing = {
+          start: curMaxRowStart,
+          end: curMaxRowEnd,
+          size: curMaxRowEnd - curMaxRowStart +1,
+        };
+          
+        
         if (bestSpacing) {
           if (bestSpacing.size > who.quantity + (siteSpacing * 2)) {
             const left = Math.round((bestSpacing.size - who.quantity) / 2);
-            for (let i = 0; i < who.quantity; i++)
-              curMaxRow[bestSpacing.start + left + i].user = who;
-            who.posInfo = {
-              block: blkMap[curMaxRowBlk],
-              row: curMaxRowNumber,
-              rowInfo: curMaxRow[bestSpacing.start + left],
-              side: 'B',
+            for (let i = 0; i < who.quantity; i++) {
+              const curCell = curMaxRow[bestSpacing.start + left + i];
+              curCell.user = who;
+              who.posInfo = {
+                block: blkMap[curMaxRowBlk],
+                row: curMaxRowNumber,
+                rowInfo: curCell,
+                side: curCell.side,
+              }
             }
+            return true;
           }
         }
       }
@@ -508,7 +519,7 @@ function getDateStr(date) {
   names.forEach(n => {
     if (!fit(n)) {
       console.log(`Warning, unable to fit ${n.name}`)
-    }
+    }    
   });
 
 
