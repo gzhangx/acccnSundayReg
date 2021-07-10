@@ -162,6 +162,7 @@ function getDateStr(date) {
     }
   }).filter(s=>s.status === 'live');
   console.log(eventsMapped)
+  console.log((eventsMapped.filter(x => x.date === nextSunday))[0])
   let nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
   let nsi = 0;
   while (!nextGoodEvent && nsi < nextSundays.length) {
@@ -194,7 +195,7 @@ function getDateStr(date) {
         })
     }
   }
-
+  
   const preSiteItems = fixedInfo.values.filter(v => v[2]).map((v,pos) => {    
     const name = v[0];
     const email = v[1];
