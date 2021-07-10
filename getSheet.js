@@ -48,15 +48,40 @@ async function doRefresh(creds) {
         read: range => read({ id, range }),
         readValues: range => read({ id, range }).then(r => get(r, 'values', [])),
         info: () => getInfo(id),
-        sheetInfo: async name => {
-          const sheetInfos = await getInfo(id);
-          const found = sheetInfos.sheets.find(s => s.properties.title === name);
-          if (!found) return null;
-          const props = found.properties;
-          return {
-            sheetId: props.sheetId,
-            ...props.gridProperties, //rowCount, columnCount
+        sheetInfo: async () => {
+          const sheetInfos = await getInfo(id); 
+          return sheetInfos.sheets.map(s => {
+            const props = s.properties;
+            return {
+              sheetId: props.sheetId,
+              title: props.title,
+              index: props.index, //not important,
+              ...props.gridProperties, //rowCount, columnCount
+            }
+          })          
+        },
+        createSheet: async (sheetId, title) => {
+          return doBatchUpdate(id, {
+            requests: [
+              {
+                addSheet: {
+                  properties: {
+                    sheetId,
+                    title,
+                  }
+                }
+              }
+            ]
+          })
+        },
+        updateValues: (range, values, opts) => {
+          if (!opts) {
+            opts = {}
           }
+          if (!opts.valueInputOption) opts.valueInputOption = 'USER_ENTERED';
+          return doOp('put', id, `/values/${range}?${querystring.stringify(opts)}`, {
+            values,
+          })
         }
       }
     }

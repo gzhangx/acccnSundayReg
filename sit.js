@@ -11,6 +11,16 @@ const sheetName = 'Sheet1';
 const credentials = require('./credentials.json')
 async function myFunction() {
 
+  /* current saved
+主席領詩	D0
+司琴	A1
+帶位	B11
+敬拜	B0
+投影	D8
+音效	D8
+牧師	D0	4
+IT 執事	D9
+  */
   function getNextSundays() {
     let cur = new Date();
     const oneday = 24 * 60 * 60 * 1000;
@@ -35,14 +45,12 @@ async function myFunction() {
 
 const client = await gs.getClient('gzprem');
 const sheet = client.getSheetOps(credentials.sheetId);
-  const fixedInfo = await sheet.read(`'${nextSunday}'!A1:D30`).catch(err => {
+  const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:D300`).catch(err => {
     console.log('Unable to load fixed')
     console.log(err.response.body);
-    return {
-      values: []
-    }
+    return [];
   });
-  const preFixesInfo = (await sheet.readValues(`'PreFixes'!A1:C30`)).map(v => {
+  const preFixesInfo = (await sheet.readValues(`'PreFixes'!A1:C300`)).map(v => {
     return {
       prefix: v[0],
       pos: v[1],
@@ -51,12 +59,12 @@ const sheet = client.getSheetOps(credentials.sheetId);
   });
 
   console.log(preFixesInfo);
-//const preSits = credentials.preSits || [];
-const preSits = fixedInfo.values.map(f => {
-  if (f[2])
-    return `${f[0].trim()}:${f[1].trim()}`;
-  return null;
-}).filter(x => x);
+
+const preSits = fixedInfo.reduce((acc,f) => {
+  if (f[3])
+    acc[`${f[0].trim()}:${f[1].trim()}`.toLowerCase()] = f;
+  return acc;
+}, {});
 
 
 const getDisplayRow = r => r + 1; //1 based
@@ -212,10 +220,10 @@ const pureSitConfig = parseSits();
     }
   }
   
-  const preSiteItems = fixedInfo.values.filter(v => v[2]).map((v,pos) => {    
+  const preSiteItems = fixedInfo.filter(v => v[3]).map((v,pos) => {    
     const name = v[0];
     const email = v[1];
-    const blkRowId = v[2];
+    const blkRowId = v[3];
     const rc = blkRowId.slice(1).split('-');
     const key = `${name}:${email}`.toLocaleLowerCase();
     return {
@@ -249,7 +257,7 @@ const pureSitConfig = parseSits();
     let ord = acc.oid[att.order_id];
     const key = `${att.profile.name}:${att.profile.email}`.toLocaleLowerCase();
     //console.log(`attend ${key} order ${att.order_id} ${att.cancelled}  ${att.status}`);
-    const existing = preSits.find(k => k.toLowerCase() === key);
+    const existing = preSits[key];
     if (existing) {
       return acc;
     }
@@ -630,9 +638,23 @@ const pureSitConfig = parseSits();
     
     const endColumnIndex = STARTCol + numCols;
     console.log(`end col num=${numCols} ${STARTCol} end=${endColumnIndex}`);
-    const sheetInfo = await sheet.sheetInfo(sheetName);
+    const sheetInfos = await sheet.sheetInfo();
+    const sheetInfo = sheetInfos.find(s => s.title === sheetName);
     if (!sheetInfo) {
       console.log(`sheet ${sheetName} not found`);
+    }
+    
+    if (!sheetInfos.find(s => s.title === nextSunday)) {
+      let freeInd = 0;
+      while (true) {
+        if (sheetInfos.find(s => s.sheetId === freeInd)) {
+          freeInd++;
+          continue;
+        }
+        break;
+      }
+      console.log(`freeInd ${freeInd}`);
+      await sheet.createSheet(freeInd, nextSunday);
     }
     const { sheetId } = sheetInfo;
     const userInfo = [
@@ -826,6 +848,11 @@ const pureSitConfig = parseSits();
       });
     }
     await sheet.doBatchUpdate(updateData);
+    await sheet.updateValues(`'${nextSunday}'!A1:D${userInfo.length + 1}`, names.map(n => {
+      return [n.names.join(','), n.emails.join(','), `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${n.posInfo.side}`
+        , `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`
+      ];
+    }));
   }
 
 }
