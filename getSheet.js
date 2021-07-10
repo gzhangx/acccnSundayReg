@@ -3,8 +3,9 @@ const querystring = require("querystring");
 //opts = { access_type: 'offline', scope: 'https://www.googleapis.com/auth/spreadsheets', response_type: 'code', client_id: 'client_id', redirect_uri: 'urn:ietf:wg:oauth:2.0:oob' }
 //return rootUrl + '?' + querystring.stringify(opts);
 //'https://accounts.google.com/o/oauth2/v2/auth?access_type=offline&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fspreadsheets&response_type=code&client_id=client_id&redirect_uri=urn%3Aietf%3Awg%3Aoauth%3A2.0%3Aoob'
-
+//https://console.developers.google.com/apis/api/sheets.googleapis.com/overview?project=id enable
 const request = require('superagent');
+const get = require('lodash/get');
 const credsJson = require('./credentials.json')
 
 async function doRefresh(creds) {
@@ -45,6 +46,7 @@ async function doRefresh(creds) {
         doBatchUpdate: data => doBatchUpdate(id, data),
         append: (range, data, ops) => append({ id, range }, data, ops),
         read: range => read({ id, range }),
+        readValues: range => read({ id, range }).then(r => get(r, 'values', [])),
         info: () => getInfo(id),
         sheetInfo: async name => {
           const sheetInfos = await getInfo(id);
@@ -54,7 +56,7 @@ async function doRefresh(creds) {
           return {
             sheetId: props.sheetId,
             ...props.gridProperties, //rowCount, columnCount
-          }          
+          }
         }
       }
     }
@@ -77,14 +79,14 @@ async function getClient(name) {
   return getClientFor(name, name => credsJson.googleSheet[name]);
 }
 
-async function testinit() {
-  const ccc = credsJson.googleSheet['gzprem'];
+async function testinit(name = 'bibleSender') {
+  const ccc = credsJson.googleSheet[name];
   console.log(ccc);
   const { client_secret, client_id } = ccc;
   const rrr = await request.post(`https://oauth2.googleapis.com/token`).type('form').send({
-    code: '4/1AY0e-g4gSM4Zm0NBRqIK_w8AqSO2jXwlqr9ytEQV18WWboYtrvA8GT6xJkk',
+    code: '4/1AX4XfWgNG-qBGcQ1yyJZYNJs_5XyU0XRkipQLb89t6jfy0DWCLplxt_b-8Q',
     redirect_uri: 'urn:ietf:wg:oauth:2.0:oob',
-    client_id: '581761652549-4r9oqnm2ji22ihtgetj07g761f7acvng.apps.googleusercontent.com',
+    client_id,
     client_secret,
     scope: 'https://www.googleapis.com/auth/spreadsheets',
     grant_type: 'authorization_code',
@@ -92,7 +94,8 @@ async function testinit() {
   console.log(rrr);
   return;
 }
-async function test() {  
+//return testinit();
+async function test() {
   const cli = await getClient('gzprem');
 
   const id = '1MO27odjCsxk6MWL0DygubU53hrtt3OB8SEnqjpUHJ-U';

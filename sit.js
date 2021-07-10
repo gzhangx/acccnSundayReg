@@ -10,10 +10,47 @@ const { get, sortBy } = require('lodash');
 const sheetName = 'Sheet1';
 const credentials = require('./credentials.json')
 async function myFunction() {
+
+  function getNextSundays() {
+    let cur = new Date();
+    const oneday = 24 * 60 * 60 * 1000;
+    while (cur.getDay() !== 0) {
+      cur = new Date(cur.getTime() + oneday);
+    }
+    const res = [];
+    for (let i = 0; i < 10; i++) {
+      res[i] = (getDateStr(new Date(cur.getTime() + (oneday * i))));
+    }
+    return res;
+  }
+
+  function getDateStr(date) {
+    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+  }
+
+
+  const nextSundays = getNextSundays();
+  const nextSunday = nextSundays[0];
+  console.log(`nextSunday=${nextSunday}`);
+
 const client = await gs.getClient('gzprem');
 const sheet = client.getSheetOps(credentials.sheetId);
-const fixedInfo = await sheet.read(`'Fixed'!A1:D30`);
+  const fixedInfo = await sheet.read(`'${nextSunday}'!A1:D30`).catch(err => {
+    console.log('Unable to load fixed')
+    console.log(err.response.body);
+    return {
+      values: []
+    }
+  });
+  const preFixesInfo = (await sheet.readValues(`'PreFixes'!A1:C30`)).map(v => {
+    return {
+      prefix: v[0],
+      pos: v[1],
+      colStart: parseInt(v[2] || 0)
+    }
+  });
 
+  console.log(preFixesInfo);
 //const preSits = credentials.preSits || [];
 const preSits = fixedInfo.values.map(f => {
   if (f[2])
@@ -112,27 +149,6 @@ const pureSitConfig = parseSits();
 //console.log(pureSitConfig.map(s=>({cols: s.cols, rows: s.rows})))
 //return console.log(pureSitConfig.map(r => r.sits.map(v => v.map(vv => vv ? 'X' : ' ').join('')).join('\n')).join('\n'));
 
-function getNextSundays() {
-  let cur = new Date();
-  const oneday = 24 * 60 * 60 * 1000;
-  while (cur.getDay() !== 0) {    
-    cur = new Date(cur.getTime() + oneday);    
-  }
-  const res = [];
-  for (let i = 0; i < 10; i++) {
-    res[i] =  (getDateStr(new Date(cur.getTime()+(oneday*i))));
-  }
-  return res;
-}
-
-function getDateStr(date) {
-  return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
-}
-
-
-  const nextSundays = getNextSundays();
-  const nextSunday = nextSundays[0];
-  console.log(`nextSunday=${nextSunday}`);
   const authorizationToken = credentials.eventBriteAuth;
   const ebFetch = async url => {
     console.log(`url=${url}`);
@@ -310,7 +326,11 @@ function getDateStr(date) {
   }).res;
 
 
-  const blkMap = ['A', 'B', 'C', 'D']
+  const blkMap = ['A', 'B', 'C', 'D'];
+  const blkLetterToId = blkMap.reduce((acc, ltr,id) => {
+    acc[ltr] = id;
+    return acc;
+  }, {});
   const blockSits = pureSitConfig.map((blk, bi) => {
     return blk.sits.map(s => {
       return s.map(r => {
@@ -360,14 +380,19 @@ function getDateStr(date) {
 
 
   const siteSpacing = 3;
-  const fitChore = who => {
-    if (who.posInfo) return true;
-    const blki = 1; //block B only
+  const fitSection = (who, sectionName, colStart) => {
+    if (who.posInfo) return true;    
+    const blki = blkLetterToId[sectionName[0]]; //block B only , //B11
+    const getRowFromSection = () => {
+      const pt = sectionName.slice(1);
+      if (!pt) return 0;
+      return parseInt(pt);
+    }
     const curBlock = blockSits[blki];
-    for (let row = 0; row < numRows; row++) {
+    for (let row = getRowFromSection(); row < numRows; row++) {
       const curRow = curBlock[row]?.filter(x => x);
       if (!curRow) break;
-      for (let i = 0; i < curRow.length; i++) {
+      for (let i = colStart || 0; i < curRow.length; i++) {
         const cri = curRow[i];
         if (!cri) continue;
         if (cri.user) continue;
@@ -513,10 +538,12 @@ function getDateStr(date) {
     return fited;
   };
 
-  const choreNames = ['詩 ','詩-']
-  names.filter(n => choreNames.find(c => n.name.startsWith(c))).forEach(n => {
-    fitChore(n);
-  })
+  //const choreNames = ['詩 ', '詩-'];
+  preFixesInfo.forEach(prefixInfo => {      
+    names.filter(n => n.name.startsWith(prefixInfo.prefix)).forEach(n => {
+      fitSection(n, prefixInfo.pos, prefixInfo.colStart);
+    })
+  });
   names.forEach(n => {
     if (!fit(n)) {
       console.log(`Warning, unable to fit ${n.name}`)
