@@ -206,7 +206,12 @@ function generateBlockSits(preSiteItemsByBlkRowId) {
 
 
 function generateImag() {
-    const preSiteItemsByBlkRowId = [];
+    const preSiteItemsByBlkRowId = {
+        'B2-5': {
+            id: 'U',
+            posInfo: {}
+        }
+    };
     const blockSits = generateBlockSits(preSiteItemsByBlkRowId);        
     const data = getDisplayData(blockSits);
         
@@ -215,15 +220,11 @@ function generateImag() {
             if (err) {
                 console.log(err);
                 return;
-            }
-            let debugdone = 0;
+            }            
 
             data.forEach((rows, rowInd) => {
                 rows.forEach((cell, colInd) => {
-                    if (!cell) return;
-                    //if (debugdone> 10) return;
-                    debugdone++;
-                    console.log(`row=${rowInd} col=${colInd}`)
+                    if (!cell) return;                    
 
                     image.scan(colInd * CELLSIZE, rowInd * CELLSIZE, CELLSIZE - 1, CELLSIZE - 1, function (x, y, idx) {
                         //var red = this.bitmap.data[idx + 0];
