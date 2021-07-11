@@ -1,5 +1,10 @@
 const fs = require('fs');
 const jimp = require('jimp');
+const Promise = require('bluebird');
+
+const gs = require('./getSheet');
+const credentials = require('./credentials.json');
+
 function parseSits() {
     const lines = fs.readFileSync('./sitConfig.txt').toString().split('\n');
     const starts = lines[0].split('\t').reduce((acc, l, i) => {
@@ -259,11 +264,68 @@ async function generateImag(key) { //B2-5
 //    fs.writeFileSync('test.html',`<img src='${r}' />`)
 //});
 
+function blockKeyIdToSide(blockSits, keyId) {
+    const curBlock = blockSits[blkLetterToId(keyId[0])];
+    const rowCol = keyId.slice(1).split('-');
+    const row = parseInt(rowCol[0]);
+    const curRow = curBlock[row];
+    const col = parseInt(rowCol[1]);
+    const cri = curRow[col];
+    return cri.side;
+}
+
+function getDateStr(date) {
+    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+}
+
+function getNextSundays() {
+    let cur = new Date();
+    const oneday = 24 * 60 * 60 * 1000;
+    while (cur.getDay() !== 0) {
+        cur = new Date(cur.getTime() + oneday);
+    }
+    const res = [];
+    for (let i = 0; i < 10; i++) {
+        res[i] = (getDateStr(new Date(cur.getTime() + (oneday * i))));
+    }
+    return res;
+}
+
+async function sendEmail() {
+    const client = await gs.getClient('gzprem');
+    const sheet = client.getSheetOps(credentials.sheetId);
+    const nextSundays = getNextSundays();
+    const nextSunday = nextSundays[0];
+    console.log(`nextSunday=${nextSunday}`);
+    
+    const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:D300`).catch(err => {
+        console.log('Unable to load fixed')
+        console.log(err.response.body);
+        return [];
+    });
+    console.log(fixedInfo);
+    const generated = await Promise.map(fixedInfo, async inf => {
+        const name = inf[0];
+        const email = inf[1];
+        const side = inf[2];
+        const key = inf[3];
+        return {
+            name, email, side, key,
+            imgSrc: await generateImag(key),
+        }
+    },{concurrency: 5});
+    fs.writeFileSync('test.html', generated.map(g => {
+        return `name=${g.name} email ${g.email}<br><img src='${g.imgSrc}'/> <br>br>`;
+    }).join('\n'));
+}
+
+return sendEmail();
+
 module.exports = {
     parseSits,
     getDisplayRow,
     generateImag,
-
+    getNextSundays,
 
     pureSitConfig,
     blockSpacing,
@@ -288,5 +350,6 @@ module.exports = {
 
     generateBlockSits,
     getDisplayData,
+    blockKeyIdToSide,
 }
 
