@@ -205,9 +205,9 @@ function generateBlockSits(preSiteItemsByBlkRowId) {
 }
 
 
-function generateImag() {
+async function generateImag(key) { //B2-5
     const preSiteItemsByBlkRowId = {
-        'B2-5': {
+        [key]: {
             id: 'U',
             posInfo: {}
         }
@@ -215,43 +215,49 @@ function generateImag() {
     const blockSits = generateBlockSits(preSiteItemsByBlkRowId);        
     const data = getDisplayData(blockSits);
         
-    jimp.loadFont(jimp.FONT_SANS_16_BLACK).then(font => {
-        new jimp(data[0].length * CELLSIZE, data.length * CELLSIZE, 0x001111ff, (err, image) => {
-            if (err) {
-                console.log(err);
-                return;
-            }            
+    const imgRes = await jimp.loadFont(jimp.FONT_SANS_16_BLACK).then(font => {
+        return new Promise((resolve, reject) => {
+            new jimp(data[0].length * CELLSIZE, data.length * CELLSIZE, 0x001111ff, (err, image) => {
+                if (err) {
+                    console.log(err);
+                    return reject(err);
+                }
 
-            data.forEach((rows, rowInd) => {
-                rows.forEach((cell, colInd) => {
-                    if (!cell) return;                    
+                data.forEach((rows, rowInd) => {
+                    rows.forEach((cell, colInd) => {
+                        if (!cell) return;
 
-                    image.scan(colInd * CELLSIZE, rowInd * CELLSIZE, CELLSIZE - 1, CELLSIZE - 1, function (x, y, idx) {
-                        //var red = this.bitmap.data[idx + 0];
-                        //var green = this.bitmap.data[idx + 1];
-                        //var blue = this.bitmap.data[idx + 2];
-                        //var alpha = this.bitmap.data[idx + 3];
-                        this.bitmap.data[idx + 0] = 0xff;
-                        this.bitmap.data[idx + 2] = 0xff;
-                        this.bitmap.data[idx + 3] = 0xff;
+                        image.scan(colInd * CELLSIZE, rowInd * CELLSIZE, CELLSIZE - 1, CELLSIZE - 1, function (x, y, idx) {
+                            //var red = this.bitmap.data[idx + 0];
+                            //var green = this.bitmap.data[idx + 1];
+                            //var blue = this.bitmap.data[idx + 2];
+                            //var alpha = this.bitmap.data[idx + 3];
+                            this.bitmap.data[idx + 0] = 0xff;
+                            this.bitmap.data[idx + 2] = 0xff;
+                            this.bitmap.data[idx + 3] = 0xff;
+                        });
+                        if (cell.user) {
+                            image.print(font, colInd * CELLSIZE, rowInd * CELLSIZE, {
+                                text: cell.user.id,
+                                alignmentX: jimp.HORIZONTAL_ALIGN_CENTER,
+                                alignmentY: jimp.VERTICAL_ALIGN_MIDDLE
+                            }, CELLSIZE, CELLSIZE);
+                        }
                     });
-                    if (cell.user) {
-                        image.print(font, colInd * CELLSIZE, rowInd * CELLSIZE, {
-                            text: cell.user.id,
-                            alignmentX: jimp.HORIZONTAL_ALIGN_CENTER,
-                            alignmentY: jimp.VERTICAL_ALIGN_MIDDLE
-                        }, CELLSIZE, CELLSIZE);
-                    }
                 });
-            });
-            //image.print(font, 10, 10, 'Hello world!');
+                //image.print(font, 10, 10, 'Hello world!');
 
-            image.write('test.png')
+                //image.write('test.png')
+                image.getBase64Async(jimp.MIME_PNG).then(rr => resolve(rr));                                
+            });
         });
     });
+    return imgRes;
 }
 
-generateImag();
+//generateImag('B2-5').then(r => {
+//    fs.writeFileSync('test.html',`<img src='${r}' />`)
+//});
 
 module.exports = {
     parseSits,
