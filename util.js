@@ -88,12 +88,6 @@ function parseSits() {
 
 const getDisplayRow = r => r + 1; //1 based
 
-module.exports = {
-    parseSits,
-}
-
-//console.log(JSON.stringify(parseSits(), null, 2))
-console.log(parseSits())
 
 function generateImag() {
     const pureSitConfig = parseSits();
@@ -241,4 +235,11 @@ function generateImag() {
     });
 }
 
-generateImag();
+//generateImag();
+
+module.exports = {
+    parseSits,
+    getDisplayRow,
+    generateImag,
+}
+

@@ -8,7 +8,8 @@ const { get, sortBy } = require('lodash');
 
 
 const sheetName = 'Sheet1';
-const credentials = require('./credentials.json')
+const credentials = require('./credentials.json');
+const { parseSits, getDisplayRow } = require('./util');
 async function myFunction() {
 
   /* current saved
@@ -67,92 +68,6 @@ const preSits = fixedInfo.reduce((acc,f) => {
 }, {});
 
 
-const getDisplayRow = r => r + 1; //1 based
-function parseSits() {
-  const lines = fs.readFileSync('./sitConfig.txt').toString().split('\n');
-  const starts = lines[0].split('\t').reduce((acc, l,i) => {
-    if (l === 'R') acc.push(i);
-    return acc;
-  }, []);
-  const getBlk = p => {
-    if (p > starts[2]) {
-      if (p > starts[3]) return 3;
-      return 2;
-    }
-    if (p < starts[1]) return 0;
-    return 1;
-  };
-  const blkInfo = lines.slice(1).reduce((acc, l, curRow) => {
-    return l.split('\t').reduce((acc, v, i) => {
-      const blki = getBlk(i);
-      if (v === 'X') {
-        let blk = acc[blki];
-        if (!blk) {
-          blk = { min: i, max: i, minRow: curRow, maxRow: curRow, sits: [], rowColMin: {}, rowColMax: {} };
-          acc[blki] = blk;
-        }
-        if (blk.min > i) blk.min = i;
-        if (blk.max < i) blk.max = i;
-        if (!blk.rowColMin[curRow] && blk.rowColMin[curRow]!== 0 ) blk.rowColMin[curRow] = i;
-        if (i <= (blk.rowColMin[curRow] || 0)) blk.rowColMin[curRow] = i;
-        if (i >= (blk.rowColMax[curRow] || 0)) blk.rowColMax[curRow] = i;
-        blk.maxRow = curRow;
-        blk.sits.push({
-          col: i,
-          row: curRow,
-        })
-      }
-      return acc;
-    },acc)
-  }, []).map(b => {    
-    return {
-      letterCol: b.sits[0].col === b.min ? 0:b.max - b.min,
-      ...b,
-      cols: b.max - b.min + 1,
-      rows: b.maxRow - b.minRow + 1,
-      sits: b.sits.map(s => {
-        const rowColMin = b.rowColMin[s.row];
-        const rowColMax = b.rowColMax[s.row];
-        const rowCols = rowColMax - rowColMin;
-        const colPos = s.col - rowColMin;
-        return ({
-          side: colPos < rowCols/3?'A': colPos> rowCols*2/3?'C':'B',
-          col: s.col - b.min,
-          row: s.row - b.minRow,
-        });
-      })
-    }
-  });
-  //console.log(starts);
-  //console.log(blkInfo.map(b => ({
-  //  cols: b.cols,
-  //  rows: b.rows,
-  //})));
-  return blkInfo.map((b,bi) => {
-    const rows = [];
-    for (let r = 0; r < b.rows; r++) {
-      const rr = [];
-      rows[r] = rr;
-      for (let c = 0; c < b.cols; c++) {
-        rr[c] = null;
-      }
-    }
-
-    b.sits.forEach(s => {
-      rows[s.row][s.col] = {
-        ...s,
-      };
-    })
-    //console.log(rows.map(r => r.join('')).join('\n'));
-    return {
-      ...b,
-      goodRowsToUse: rows.map((r,i) => {
-        return !(i%2) || i === rows.length-1
-      }),
-      sits: rows,
-    };
-  });
-}
 const pureSitConfig = parseSits();
 //console.log(pureSitConfig.map(s=>({cols: s.cols, rows: s.rows})))
 //return console.log(pureSitConfig.map(r => r.sits.map(v => v.map(vv => vv ? 'X' : ' ').join('')).join('\n')).join('\n'));
