@@ -88,9 +88,42 @@ function parseSits() {
 
 const getDisplayRow = r => r + 1; //1 based
 
+const blockSpacing = 2;
+const fMax = (acc, cr) => acc < cr ? cr : acc;
+//const blockColMaxes = blockConfig.map(r => r.reduce(fMax, 0));
+const pureSitConfig = parseSits();
+const blockColMaxes = pureSitConfig.map(r => r.cols);
+const numCols = blockColMaxes.reduce((acc, r) => acc + r + blockSpacing, 0);
+//const numRows = blockConfig.map(r => r.length).reduce(fMax, 0);
+const numRows = pureSitConfig.map(r => r.rows).reduce(fMax, 0);
+
+const STARTCol = 4;
+const STARTRow = 3;
+const namesSpacking = 3;
+
+const namesStartRow = STARTRow + numRows + namesSpacking;
+const CELLSIZE = 20;
+const blockStarts = blockColMaxes.reduce((acc, b) => {
+    const curStart = acc.cur + blockSpacing + acc.prev;
+    acc.prev = b;
+    acc.res.push(curStart);
+    acc.cur = curStart;
+    return acc;
+}, {
+    res: [],
+    prev: 0,
+    cur: STARTCol - blockSpacing,
+}).res;
+
+
+const blkMap = Object.freeze(['A', 'B', 'C', 'D']);
+const blkLetterToId = blkMap.reduce((acc, ltr, id) => {
+    acc[ltr] = id;
+    return acc;
+}, {});
 
 function generateImag() {
-    const pureSitConfig = parseSits();
+    
 
     const blockSpacing = 2;
     const fMax = (acc, cr) => acc < cr ? cr : acc;
@@ -237,9 +270,94 @@ function generateImag() {
 
 //generateImag();
 
+const data = [];
+const debugCOLLimit = 30;
+for (let i = 0; i < STARTRow + numRows; i++) {
+    data[i] = [];
+    for (let j = 0; j < STARTCol + numCols; j++) {
+        data[i][j] = null;
+    }
+
+    //debug
+    //data[i] = [];
+    for (let j = 0; j < debugCOLLimit; j++)
+        data[i][j] = null;
+}
+
+//top col cord
+pureSitConfig.forEach((bc, i) => {
+    data[STARTRow - 2][bc.letterCol + blockStarts[i] - 1] = {
+        user: {
+            id: blkMap[i]
+        }
+    }
+});
+for (let i = 0; i < numRows; i++) {
+    data[i + STARTRow - 1][0] = {
+        user: {
+            id: getDisplayRow(i).toString()
+        }
+    }
+}
+
+
+function generateBlockSits(preSiteItemsByBlkRowId) {
+    const blockSits = pureSitConfig.map((blk, bi) => {
+        return blk.sits.map(s => {
+            return s.map(r => {
+                if (!r) return null;
+
+                const blk = {
+                    ...r,
+                    blkRow: `${blkMap[bi]}${r.row}`,
+                    blkRowId: `${blkMap[bi]}${r.row}-${r.col}`,
+                    user: null,
+                    uiPos: {
+                        col: blockStarts[bi] + r.col,
+                        row: STARTRow + r.row,
+                    }
+                };
+                const user = preSiteItemsByBlkRowId[blk.blkRowId];
+                if (user) {
+                    blk.user = user;
+                    user.posInfo.rowInfo = blk;
+                    //user.posInfo.side = `${blk.side}-${user.posInfo.side}`;
+                    user.posInfo.side = blk.side;
+                }
+                return blk;
+            });
+        });
+    });
+    return blockSits;
+}
 module.exports = {
     parseSits,
     getDisplayRow,
     generateImag,
+
+
+    pureSitConfig,
+    blockSpacing,
+    fMax,
+    //const blockColMaxes = blockConfig.map(r => r.reduce(fMax, 0));
+    blockColMaxes,
+    numCols,
+    //const numRows = blockConfig.map(r => r.length).reduce(fMax, 0);
+    numRows,
+
+    STARTCol,
+    STARTRow,
+    namesSpacking,
+
+    namesStartRow,
+    CELLSIZE,
+    blockStarts,
+
+
+    blkMap,
+    blkLetterToId,
+
+    generateBlockSits,
+    data,
 }
 
