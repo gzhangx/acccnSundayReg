@@ -122,68 +122,8 @@ const blkLetterToId = blkMap.reduce((acc, ltr, id) => {
     return acc;
 }, {});
 
-function generateImag() {
-    
 
-    const blockSpacing = 2;
-    const fMax = (acc, cr) => acc < cr ? cr : acc;
-    //const blockColMaxes = blockConfig.map(r => r.reduce(fMax, 0));
-    const blockColMaxes = pureSitConfig.map(r => r.cols);
-    const numCols = blockColMaxes.reduce((acc, r) => acc + r + blockSpacing, 0);
-    //const numRows = blockConfig.map(r => r.length).reduce(fMax, 0);
-    const numRows = pureSitConfig.map(r => r.rows).reduce(fMax, 0);
-
-    const STARTCol = 4;
-    const STARTRow = 3;
-    const namesSpacking = 3;
-
-    const namesStartRow = STARTRow + numRows + namesSpacking;
-    const CELLSIZE = 20;
-    const blockStarts = blockColMaxes.reduce((acc, b) => {
-        const curStart = acc.cur + blockSpacing + acc.prev;
-        acc.prev = b;
-        acc.res.push(curStart);
-        acc.cur = curStart;
-        return acc;
-    }, {
-        res: [],
-        prev: 0,
-        cur: STARTCol - blockSpacing,
-    }).res;
-
-
-    const blkMap = ['A', 'B', 'C', 'D'];
-    const blkLetterToId = blkMap.reduce((acc, ltr, id) => {
-        acc[ltr] = id;
-        return acc;
-    }, {});
-    const preSiteItemsByBlkRowId = [];
-    const blockSits = pureSitConfig.map((blk, bi) => {
-        return blk.sits.map(s => {
-            return s.map(r => {
-                if (!r) return null;
-
-                const blk = {
-                    ...r,
-                    blkRow: `${blkMap[bi]}${r.row}`,
-                    blkRowId: `${blkMap[bi]}${r.row}-${r.col}`,
-                    user: null,
-                    uiPos: {
-                        col: blockStarts[bi] + r.col,
-                        row: STARTRow + r.row,
-                    }
-                };
-                const user = preSiteItemsByBlkRowId[blk.blkRowId];
-                if (user) {
-                    blk.user = user;
-                    user.posInfo.rowInfo = blk;
-                    //user.posInfo.side = `${blk.side}-${user.posInfo.side}`;
-                    user.posInfo.side = blk.side;
-                }
-                return blk;
-            });
-        });
-    });
+function getDisplayData(blockSits) {
     const data = [];
     const debugCOLLimit = 30;
     for (let i = 0; i < STARTRow + numRows; i++) {
@@ -213,6 +153,8 @@ function generateImag() {
             }
         }
     }
+
+
     blockSits.forEach(blk => {
         blk.forEach(r => {
             r.forEach(c => {
@@ -228,76 +170,7 @@ function generateImag() {
             })
         })
     });
-    jimp.loadFont(jimp.FONT_SANS_16_BLACK).then(font => {
-        new jimp(data[0].length * CELLSIZE, data.length * CELLSIZE, 0x001111ff, (err, image) => {
-            if (err) {
-                console.log(err);
-                return;
-            }
-            let debugdone = 0;
-        
-            data.forEach((rows, rowInd) => {
-                rows.forEach((cell, colInd) => {
-                    if (!cell) return;
-                    //if (debugdone> 10) return;
-                    debugdone++;
-                    console.log(`row=${rowInd} col=${colInd}`)
-                    
-                    image.scan(colInd * CELLSIZE, rowInd * CELLSIZE, CELLSIZE-1, CELLSIZE-1, function (x, y, idx) {
-                        //var red = this.bitmap.data[idx + 0];
-                        //var green = this.bitmap.data[idx + 1];
-                        //var blue = this.bitmap.data[idx + 2];
-                        //var alpha = this.bitmap.data[idx + 3];
-                        this.bitmap.data[idx + 0] = 0xff;
-                        this.bitmap.data[idx + 2] = 0xff;
-                        this.bitmap.data[idx + 3] = 0xff;
-                    });
-                    if (cell.user) {
-                        image.print(font, colInd * CELLSIZE, rowInd * CELLSIZE, {
-                            text: cell.user.id,
-                            alignmentX: jimp.HORIZONTAL_ALIGN_CENTER,
-                            alignmentY: jimp.VERTICAL_ALIGN_MIDDLE
-                        }, CELLSIZE, CELLSIZE);
-                    }
-                });
-            });
-            //image.print(font, 10, 10, 'Hello world!');
-        
-            image.write('test.png')
-        });
-    });
-}
-
-//generateImag();
-
-const data = [];
-const debugCOLLimit = 30;
-for (let i = 0; i < STARTRow + numRows; i++) {
-    data[i] = [];
-    for (let j = 0; j < STARTCol + numCols; j++) {
-        data[i][j] = null;
-    }
-
-    //debug
-    //data[i] = [];
-    for (let j = 0; j < debugCOLLimit; j++)
-        data[i][j] = null;
-}
-
-//top col cord
-pureSitConfig.forEach((bc, i) => {
-    data[STARTRow - 2][bc.letterCol + blockStarts[i] - 1] = {
-        user: {
-            id: blkMap[i]
-        }
-    }
-});
-for (let i = 0; i < numRows; i++) {
-    data[i + STARTRow - 1][0] = {
-        user: {
-            id: getDisplayRow(i).toString()
-        }
-    }
+    return data;
 }
 
 
@@ -330,6 +203,55 @@ function generateBlockSits(preSiteItemsByBlkRowId) {
     });
     return blockSits;
 }
+
+
+function generateImag() {
+    const preSiteItemsByBlkRowId = [];
+    const blockSits = generateBlockSits(preSiteItemsByBlkRowId);        
+    const data = getDisplayData(blockSits);
+        
+    jimp.loadFont(jimp.FONT_SANS_16_BLACK).then(font => {
+        new jimp(data[0].length * CELLSIZE, data.length * CELLSIZE, 0x001111ff, (err, image) => {
+            if (err) {
+                console.log(err);
+                return;
+            }
+            let debugdone = 0;
+
+            data.forEach((rows, rowInd) => {
+                rows.forEach((cell, colInd) => {
+                    if (!cell) return;
+                    //if (debugdone> 10) return;
+                    debugdone++;
+                    console.log(`row=${rowInd} col=${colInd}`)
+
+                    image.scan(colInd * CELLSIZE, rowInd * CELLSIZE, CELLSIZE - 1, CELLSIZE - 1, function (x, y, idx) {
+                        //var red = this.bitmap.data[idx + 0];
+                        //var green = this.bitmap.data[idx + 1];
+                        //var blue = this.bitmap.data[idx + 2];
+                        //var alpha = this.bitmap.data[idx + 3];
+                        this.bitmap.data[idx + 0] = 0xff;
+                        this.bitmap.data[idx + 2] = 0xff;
+                        this.bitmap.data[idx + 3] = 0xff;
+                    });
+                    if (cell.user) {
+                        image.print(font, colInd * CELLSIZE, rowInd * CELLSIZE, {
+                            text: cell.user.id,
+                            alignmentX: jimp.HORIZONTAL_ALIGN_CENTER,
+                            alignmentY: jimp.VERTICAL_ALIGN_MIDDLE
+                        }, CELLSIZE, CELLSIZE);
+                    }
+                });
+            });
+            //image.print(font, 10, 10, 'Hello world!');
+
+            image.write('test.png')
+        });
+    });
+}
+
+generateImag();
+
 module.exports = {
     parseSits,
     getDisplayRow,
@@ -358,6 +280,6 @@ module.exports = {
     blkLetterToId,
 
     generateBlockSits,
-    data,
+    getDisplayData,
 }
 

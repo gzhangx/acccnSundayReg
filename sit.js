@@ -451,25 +451,8 @@ const preSits = fixedInfo.reduce((acc,f) => {
 
   } else {
     
-    const data = utils.data;
-    
-    blockSits.forEach(blk => {
-      blk.forEach(r => {
-        r.forEach(c => {
-          if (!c) return;
-          //data[c.uiPos.row - STARTRow][c.uiPos.col - STARTCol] = c.user ? c.user.id : 'e';
-          //if (c.uiPos.col < debugCOLLimit) //debug
-          try {
-            data[c.uiPos.row - 1][c.uiPos.col - 1] = c;
-          } catch (err) {
-            data[c.uiPos.row - 1][c.uiPos.col - 1] = c;
-            throw err;
-          }
-        })
-      })
-    });
-
-    
+    const data = utils.getDisplayData(blockSits);
+        
     const endColumnIndex = utils.STARTCol + utils.numCols;
     console.log(`end col num=${utils.numCols} ${utils.STARTCol} end=${endColumnIndex}`);
     const sheetInfos = await sheet.sheetInfo();
