@@ -662,7 +662,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
       ];
     }));
 
-    await utils.sendEmail();
+    //await utils.sendEmail();
   }
 
 }
