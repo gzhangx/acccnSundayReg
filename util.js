@@ -4,6 +4,7 @@ const Promise = require('bluebird');
 
 const gs = require('./getSheet');
 const credentials = require('./credentials.json');
+const nodemailer = require('nodemailer');
 
 function parseSits() {
     const lines = fs.readFileSync('./sitConfig.txt').toString().split('\n');
@@ -322,7 +323,7 @@ async function sendEmail() {
         console.log(err.response.body);
         return [];
     });
-    console.log(fixedInfo);
+    
     const generated = await Promise.map(fixedInfo, async inf => {
         const name = inf[0];
         const email = inf[1];
@@ -330,16 +331,54 @@ async function sendEmail() {
         const key = inf[3];
         const finished = inf[4];
         if (finished) return null;
-        inf[4] = 'sent';
+        //inf[4] = 'sent';
         return {
             name, email, side, key,
             imgSrc: await generateImag(key),
         }
-    },{concurrency: 5});
-    fs.writeFileSync('test.html', generated.filter(x=>x).map(g => {
+    }, { concurrency: 5 });
+    fs.writeFileSync('test.html', generated.filter(x => x).map(g => {
         return `Hello ${g.name} (${g.email}), your assigned sit is ${g.side}, please show this email to your usher for their convience.  Thank you!
           ${g.key}<br><img src='${g.imgSrc}'/> <br>br>`;
     }).join('\n'));
+    const transporter = nodemailer.createTransport({
+        host: 'smtp.office365.com',
+        secureConnection: false, // TLS requires secureConnection to be false
+        port: 587, // port for secure SMTP
+        tls: {
+            ciphers: 'SSLv3'
+        },
+        auth: credentials.msauth
+    });
+
+    const getUserKey = g => `${g.name}-${g.email}`;
+    const sent = await Promise.map(generated.filter(x => x), async g => {
+        const html = `Hello ${g.name} (${g.email}), your assigned sit is ${g.side}, please show this email to your usher for their convience.  Thank you!
+          ${g.key}<br><img src='${g.imgSrc}'/> <br>br>`;
+        try {
+            console.log(`Sending to ${g.email}`);
+            await transporter.sendMail({
+                from: credentials.msauth.user,
+                subject: 'Church siting (教会座位)',
+                to: g.email,
+                //subject: 'Nodemailer is unicode friendly ✔',            
+                html,
+            });
+        } catch (err) {
+            console.log(err);
+            console.log(`failed email ${g.name} ${g.email}`);
+            return null;
+        }
+        return getUserKey(g);
+    });
+
+
+    fixedInfo.forEach(g => {
+        const key = `${g[0]}-${g[1]}`
+        if (sent.find(k => k == key)) {
+            g[4] = 'sent';
+        }
+    })
     await sheet.updateValues(`'${nextSunday}'!A1:E${fixedInfo.length}`, fixedInfo);
 }
 
