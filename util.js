@@ -317,7 +317,7 @@ async function sendEmail() {
     const nextSunday = nextSundays[0];
     console.log(`nextSunday=${nextSunday}`);
     
-    const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:D300`).catch(err => {
+    const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:E300`).catch(err => {
         console.log('Unable to load fixed')
         console.log(err.response.body);
         return [];
@@ -328,15 +328,19 @@ async function sendEmail() {
         const email = inf[1];
         const side = inf[2];
         const key = inf[3];
+        const finished = inf[4];
+        if (finished) return null;
+        inf[4] = 'sent';
         return {
             name, email, side, key,
             imgSrc: await generateImag(key),
         }
     },{concurrency: 5});
-    fs.writeFileSync('test.html', generated.map(g => {
+    fs.writeFileSync('test.html', generated.filter(x=>x).map(g => {
         return `Hello ${g.name} (${g.email}), your assigned sit is ${g.side}, please show this email to your usher for their convience.  Thank you!
           ${g.key}<br><img src='${g.imgSrc}'/> <br>br>`;
     }).join('\n'));
+    await sheet.updateValues(`'${nextSunday}'!A1:E${fixedInfo.length}`, fixedInfo);
 }
 
 return sendEmail();
