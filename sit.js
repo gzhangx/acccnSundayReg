@@ -44,7 +44,6 @@ const sheet = client.getSheetOps(credentials.sheetId);
     }
   });
 
-  console.log(preFixesInfo);
 
 const preSits = fixedInfo.reduce((acc,f) => {
   if (f[3])
@@ -77,17 +76,21 @@ const preSits = fixedInfo.reduce((acc,f) => {
     }
   }
   const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/?name_filter=' + encodeURIComponent(credentials.eventTitle) + '&time_filter=current_future');
-  const eventsMapped = eventArys.events.map(e => {
+  const eventsMappedNonFiltered = eventArys.events.map(e => {
     return {
       id: e.id,
       date: e.start.local.slice(0, 10),
       name: e.name,
       status: e.status,
     }
-  }).filter(s=>s.status === 'live');
-  console.log(eventsMapped)
-  console.log((eventsMapped.filter(x => x.date === nextSunday))[0])
+  }).filter(s => s.status === 'live');
+  const eventsMapped = eventsMappedNonFiltered.filter(x => x.date === nextSunday);
   let nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
+  if (!nextGoodEvent) {
+    console.log('Next not found');
+    console.log(eventsMappedNonFiltered)
+    return;
+  }
   let nsi = 0;
   while (!nextGoodEvent && nsi < nextSundays.length) {
     nsi++;
