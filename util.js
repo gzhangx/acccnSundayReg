@@ -222,7 +222,7 @@ async function generateImag(key) { //B2-5
         
     const imgRes = await jimp.loadFont(jimp.FONT_SANS_16_BLACK).then(font => {
         return new Promise((resolve, reject) => {
-            new jimp(data[0].length * CELLSIZE, data.length * CELLSIZE, 0x001111ff, (err, image) => {
+            new jimp(data[0].length * CELLSIZE, data.length * CELLSIZE, 0xffffffff, (err, image) => {
                 if (err) {
                     console.log(err);
                     return reject(err);
@@ -237,8 +237,27 @@ async function generateImag(key) { //B2-5
                             //var green = this.bitmap.data[idx + 1];
                             //var blue = this.bitmap.data[idx + 2];
                             //var alpha = this.bitmap.data[idx + 3];
-                            this.bitmap.data[idx + 0] = 0xff;
-                            this.bitmap.data[idx + 2] = 0xff;
+                            let r = 0xff;
+                            let g = 0;
+                            let b = 0xff;
+                            const user = cell.user;
+                            if (!user) g = 0x99;
+                            else if (user.id !== 'U') {
+                                r = 0xe0;
+                                g = 0xe0;
+                                b = 0xe0;
+                                if (blkMap.find(m => m === user.id)) {
+                                    r = 0xff;
+                                    g = 0xff;
+                                    b = 0xff;
+                                }
+                            } else {
+                                g = 0xff;
+                                b = 0;
+                            }
+                            this.bitmap.data[idx + 0] = r;
+                            this.bitmap.data[idx + 1] = g;
+                            this.bitmap.data[idx + 2] = b;                            
                             this.bitmap.data[idx + 3] = 0xff;
                         });
                         if (cell.user) {
@@ -315,7 +334,8 @@ async function sendEmail() {
         }
     },{concurrency: 5});
     fs.writeFileSync('test.html', generated.map(g => {
-        return `name=${g.name} email ${g.email}<br><img src='${g.imgSrc}'/> <br>br>`;
+        return `Hello ${g.name} (${g.email}), your assigned sit is ${g.side}, please show this email to your usher for their convience.  Thank you!
+          ${g.key}<br><img src='${g.imgSrc}'/> <br>br>`;
     }).join('\n'));
 }
 
