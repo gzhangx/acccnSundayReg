@@ -650,11 +650,19 @@ const preSits = fixedInfo.reduce((acc,f) => {
       });
     }
     await sheet.doBatchUpdate(updateData);
+    console.log(names);
     await sheet.updateValues(`'${nextSunday}'!A1:D${userInfo.length + 1}`, names.map(n => {
+      if (n.posInfo) {
+        console.log('good ' + n.name);
+      } else {
+        console.log(n.posInfo);
+      }
       return [n.names.join(','), n.emails.join(','), `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${n.posInfo.side}`
         , `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`
       ];
     }));
+
+    await utils.sendEmail();
   }
 
 }

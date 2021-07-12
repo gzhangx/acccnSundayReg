@@ -318,6 +318,8 @@ async function sendEmail() {
     const nextSunday = nextSundays[0];
     console.log(`nextSunday=${nextSunday}`);
     
+    const template = (await sheet.readValues(`'Template'!A1:A1`))[0][0];
+    
     const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:E300`).catch(err => {
         console.log('Unable to load fixed')
         console.log(err.response.body);
@@ -339,7 +341,7 @@ async function sendEmail() {
     }, { concurrency: 5 });
     fs.writeFileSync('test.html', generated.filter(x => x).map(g => {
         return `Hello ${g.name} (${g.email}), your assigned sit is ${g.side}, please show this email to your usher for their convience.  Thank you!
-          ${g.key}<br><img src='${g.imgSrc}'/> <br>br>`;
+          ${g.key}<br><img src='${g.imgSrc}'/> <br><br>`;
     }).join('\n'));
     const transporter = nodemailer.createTransport({
         host: 'smtp.office365.com',
@@ -352,9 +354,11 @@ async function sendEmail() {
     });
 
     const getUserKey = g => `${g.name}-${g.email}`;
-    const sent = await Promise.map(generated.filter(x => x), async g => {
-        const html = `Hello ${g.name} (${g.email}), your assigned sit is ${g.side}, please show this email to your usher for their convience.  Thank you!
-          ${g.key}<br><img src='${g.imgSrc}'/> <br>br>`;
+    const sent = await Promise.map(generated.filter(x => x), async g => {        
+        const html = template.replace(/{name}/g, g.name).replace(/\{sit\}/g, g.side)
+            .replace(/{imgSrc}/g, g.imgSrc).replace(/{email}/g, g.email)
+        .replace(/{key}/g,g.key)
+        //console.log(html)
         try {
             console.log(`Sending to ${g.email}`);
             await transporter.sendMail({
@@ -381,8 +385,6 @@ async function sendEmail() {
     })
     await sheet.updateValues(`'${nextSunday}'!A1:E${fixedInfo.length}`, fixedInfo);
 }
-
-return sendEmail();
 
 module.exports = {
     parseSits,
@@ -414,5 +416,6 @@ module.exports = {
     generateBlockSits,
     getDisplayData,
     blockKeyIdToSide,
+    sendEmail,
 }
 
