@@ -374,7 +374,7 @@ async function sendEmail() {
             return null;
         }
         return getUserKey(g);
-    });
+    }, { concurrency: 2 });
 
 
     fixedInfo.forEach(g => {
