@@ -36,11 +36,12 @@ const sheet = client.getSheetOps(credentials.sheetId);
     console.log(err.response.body);
     return [];
   });
-  const preFixesInfo = (await sheet.readValues(`'PreFixes'!A1:C300`)).map(v => {
+  const preFixesInfo = (await sheet.readValues(`'PreFixes'!A1:D300`)).map(v => {
     return {
       prefix: v[0],
       pos: v[1],
-      colStart: parseInt(v[2] || 0)
+      colStart: parseInt(v[2] || 0),
+      forceFillEnd: v[3],  //if found, block the rest of the sits to that space
     }
   });
 
@@ -86,6 +87,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
   }).filter(s => s.status === 'live');
   const eventsMapped = eventsMappedNonFiltered.filter(x => x.date === nextSunday);
   let nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
+  //nextGoodEvent = (eventsMappedNonFiltered)[0]; //TODO: fix
   if (!nextGoodEvent) {
     console.log('Next not found');
     console.log(eventsMappedNonFiltered)
@@ -396,10 +398,30 @@ const preSits = fixedInfo.reduce((acc,f) => {
   };
 
   //const choreNames = ['詩 ', '詩-'];
-  preFixesInfo.forEach(prefixInfo => {      
+  preFixesInfo.forEach(prefixInfo => {
     names.filter(n => n.name.startsWith(prefixInfo.prefix)).forEach(n => {
       fitSection(n, prefixInfo.pos, prefixInfo.colStart);
-    })
+    });
+    if (prefixInfo.forceFillEnd) {
+      const sectionName = prefixInfo.pos;
+      const blki = blkLetterToId[sectionName[0]]; //block B only , //B11
+      const getRowFromSection = () => {
+        const pt = sectionName.slice(1);
+        if (!pt) return 0;
+        return parseInt(pt);
+      }
+      const curBlock = blockSits[blki];
+      for (let row = getRowFromSection(); row < prefixInfo.forceFillEnd; row++) {
+        const curRow = curBlock[row]?.filter(x => x);
+        if (!curRow) break;
+        for (let i = prefixInfo.colStart || 0; i < curRow.length; i++) {
+          const cri = curRow[i];
+          if (!cri) continue;
+          if (cri.user) continue;
+          cri.user = 'DBGFILL';
+        }
+      }
+    }
   });
   names.forEach(n => {
     if (!fit(n)) {
