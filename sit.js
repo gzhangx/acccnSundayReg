@@ -238,7 +238,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
 
 
 
-  const siteSpacing = 3;
+  const siteSpacing = 2;
   const fitSection = (who, sectionName, colStart) => {
     if (who.posInfo) return true;    
     const blki = blkLetterToId[sectionName[0]]; //block B only , //B11
@@ -377,7 +377,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
           
         
         if (bestSpacing) {
-          if (bestSpacing.size > who.quantity + (siteSpacing * 2)) {
+          if (bestSpacing.size >= who.quantity + (siteSpacing * 2)) {
             const left = Math.round((bestSpacing.size - who.quantity) / 2);
             for (let i = 0; i < who.quantity; i++) {
               const curCell = curMaxRow[bestSpacing.start + left + i];
@@ -675,7 +675,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
       });
     }
     await sheet.doBatchUpdate(updateData);
-    await sheet.updateValues(`'${nextSunday}'!A1:D${userInfo.length + 1}`, names.map(n => {      
+    await sheet.updateValues(`'${nextSunday}'!A1:D${userInfo.length + 1}`, names.filter(n=>n.posInfo).map(n => {      
       return [n.names.join(','), n.emails.join(','), `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${n.posInfo.side}`
         , `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`
       ];

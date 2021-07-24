@@ -339,10 +339,10 @@ async function sendEmail() {
             imgSrc: await generateImag(key),
         }
     }, { concurrency: 5 });
-    fs.writeFileSync('test.html', generated.filter(x => x).map(g => {
-        return `Hello ${g.name} (${g.email}), your assigned sit is ${g.side}, please show this email to your usher for their convience.  Thank you!
-          ${g.key}<br><img src='${g.imgSrc}'/> <br><br>`;
-    }).join('\n'));
+    //fs.writeFileSync('test.html', generated.filter(x => x).map(g => {
+    //    return `Hello ${g.name} (${g.email}), your assigned sit is ${g.side}, please show this email to your usher for their convience.  Thank you!
+    //      ${g.key}<br><img src='${g.imgSrc}'/> <br><br>`;
+    //}).join('\n'));
     const transporter = nodemailer.createTransport({
         host: 'smtp.office365.com',
         secureConnection: false, // TLS requires secureConnection to be false
