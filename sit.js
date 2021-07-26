@@ -63,7 +63,10 @@ const preSits = fixedInfo.reduce((acc,f) => {
 //return console.log(pureSitConfig.map(r => r.sits.map(v => v.map(vv => vv ? 'X' : ' ').join('')).join('\n')).join('\n'));
 
   const authorizationToken = credentials.eventBriteAuth;
-  const ebFetch = async url => {
+  const ebFetch = async (url, prms) => {
+    if (prms) {
+      url = url + '?' + Object.keys(prms).map(n => `${n}=${encodeURIComponent(prms[n])}`).join('&');
+    }
     console.log(`url=${url}`);
     if (isLocal) {
       //var response = await request.get("https://www.eventbriteapi.com/v3/events/156798329023/attendees").set('Authorization', authorizationToken).send();
@@ -81,7 +84,9 @@ const preSits = fixedInfo.reduce((acc,f) => {
       return pages;
     }
   }
-  const eventArys = await ebFetch(`https://www.eventbriteapi.com/v3/organizations/544694808143/events/?name_filter=${encodeURIComponent(credentials.eventTitle)}&time_filter=${ebQueryStatus.time_filter}`);
+  const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/',
+    { name_filter: credentials.eventTitle, time_filter: ebQueryStatus.time_filter }
+  );
   const eventsMappedNonFiltered = eventArys.events.map(e => {
     return {
       id: e.id,
@@ -109,7 +114,19 @@ const preSits = fixedInfo.reduce((acc,f) => {
     return;
   }
   
-  let pages = await ebFetch(`https://www.eventbriteapi.com/v3/events/${nextGoodEvent.id}/attendees`);
+  let attendees = [];
+  let attendeesPrms = null;
+  while (true) {
+    const pages = await ebFetch(`https://www.eventbriteapi.com/v3/events/${nextGoodEvent.id}/attendees`, attendeesPrms);
+    attendees = attendees.concat(pages.attendees);
+    if (pages.pagination.has_more_items) {
+      attendeesPrms = {
+        continuation: pages.pagination.continuation,
+      }
+      continue;
+    }
+    break;
+  }
   if (false && isLocal) {    
     const fakeSizes = { 'gg1': 3, 'gg12': 4 ,'gg19':6,'gg22':8,'gg33':5};
     const fakeNames = [];
@@ -162,7 +179,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     return acc;
   }, {});
   //return console.log(preSiteItems)
-  const names = sortBy(pages.attendees.reduce((acc, att) => {
+  const names = sortBy(attendees.reduce((acc, att) => {
     if (att.cancelled) return acc;
     let ord = acc.oid[att.order_id];
     const key = `${att.profile.name}:${att.profile.email}`.toLocaleLowerCase();
