@@ -87,7 +87,8 @@ function parseSits() {
         return {
             ...b,
             goodRowsToUse: rows.map((r, i) => {
-                return !(i % 2) || i === rows.length - 1
+                return true;
+                //return !(i % 2) || i === rows.length - 1
             }),
             sits: rows,
         };

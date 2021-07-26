@@ -313,10 +313,11 @@ const preSits = fixedInfo.reduce((acc,f) => {
             let tryCol = 0;
             if (curRow[tryCol].user) return;
             while (curRow[tryCol].sitTag !== 'X') tryCol++;            
-            for (let i = tryCol; i < who.quantity; i++){
-              if (!curRow[i].user)
-                curRow[i].user = who;
-              else return fit(who, reverse); //this needs testing, i.e. we grow out of current row.
+            for (let i = 0; i < who.quantity; i++){
+              if (!curRow[tryCol+i].user)
+                curRow[tryCol+i].user = who;
+              //else return fit(who, reverse); //this needs testing, i.e. we grow out of current row.
+              else return false;
             } 
             who.posInfo = {
               block: blkMap[blki],
