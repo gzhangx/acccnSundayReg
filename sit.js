@@ -6,7 +6,7 @@ const fs = require('fs');
 const request = require('superagent');
 const { get, sortBy } = require('lodash');
 
-const debugComplted = true;
+const debugComplted = false;
 const ebQueryStatus = {
   time_filter: debugComplted?'past':'current_future',
   status: debugComplted?'completed':'live'
