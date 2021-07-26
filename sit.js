@@ -6,6 +6,11 @@ const fs = require('fs');
 const request = require('superagent');
 const { get, sortBy } = require('lodash');
 
+const debugComplted = true;
+const ebQueryStatus = {
+  time_filter: debugComplted?'past':'current_future',
+  status: debugComplted?'completed':'live'
+}
 
 const sheetName = 'Sheet1';
 const credentials = require('./credentials.json');
@@ -76,7 +81,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
       return pages;
     }
   }
-  const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/?name_filter=' + encodeURIComponent(credentials.eventTitle) + '&time_filter=current_future');
+  const eventArys = await ebFetch(`https://www.eventbriteapi.com/v3/organizations/544694808143/events/?name_filter=${encodeURIComponent(credentials.eventTitle)}&time_filter=${ebQueryStatus.time_filter}`);
   const eventsMappedNonFiltered = eventArys.events.map(e => {
     return {
       id: e.id,
@@ -84,7 +89,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
       name: e.name,
       status: e.status,
     }
-  }).filter(s => s.status === 'live');
+  }).filter(s => s.status === ebQueryStatus.status);
   const eventsMapped = eventsMappedNonFiltered.filter(x => x.date === nextSunday);
   let nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
   //nextGoodEvent = (eventsMappedNonFiltered)[0]; //TODO: fix
