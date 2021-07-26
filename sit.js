@@ -6,7 +6,7 @@ const fs = require('fs');
 const request = require('superagent');
 const { get, sortBy } = require('lodash');
 
-const debugComplted = false;
+const debugComplted = true;
 const ebQueryStatus = {
   time_filter: debugComplted?'past':'current_future',
   status: debugComplted?'completed':'live'
@@ -281,6 +281,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
       for (let i = colStart || 0; i < curRow.length; i++) {
         const cri = curRow[i];
         if (!cri) continue;
+        if (cri.sitTag !== 'X') continue;
         if (cri.user) continue;
         cri.user = who;
         who.posInfo = {
@@ -309,8 +310,10 @@ const preSits = fixedInfo.reduce((acc,f) => {
         ['left', 'right'].forEach(side => {
           if (fited) return;
           if (side === 'left') {
-            if (curRow[0].user) return;
-            for (let i = 0; i < who.quantity; i++){
+            let tryCol = 0;
+            if (curRow[tryCol].user) return;
+            while (curRow[tryCol].sitTag !== 'X') tryCol++;            
+            for (let i = tryCol; i < who.quantity; i++){
               if (!curRow[i].user)
                 curRow[i].user = who;
               else return fit(who, reverse); //this needs testing, i.e. we grow out of current row.
@@ -318,14 +321,17 @@ const preSits = fixedInfo.reduce((acc,f) => {
             who.posInfo = {
               block: blkMap[blki],
               row,
-              rowInfo: curRow[0],
+              rowInfo: curRow[tryCol],
               side: 'A',              
             }
             fited = true;
             return;
           } else if (side === 'right') {
-            const ind = curRow.length - 1;
+            let ind = curRow.length - 1;
             if (curRow[ind].user) return;
+            while (curRow[ind].sitTag !== 'X') {
+              ind--;
+            }
             const toSearch = ind - who.quantity - siteSpacing;
             for (let i = ind; i >= toSearch; i--) {
               if (curRow[i].user) return;

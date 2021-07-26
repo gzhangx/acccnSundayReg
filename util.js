@@ -23,7 +23,7 @@ function parseSits() {
     const blkInfo = lines.slice(1).reduce((acc, l, curRow) => {
         return l.split('\t').reduce((acc, v, i) => {
             const blki = getBlk(i);
-            if (v === 'X') {
+            if (v === 'X' || v === 'N') {
                 let blk = acc[blki];
                 if (!blk) {
                     blk = { min: i, max: i, minRow: curRow, maxRow: curRow, sits: [], rowColMin: {}, rowColMax: {} };
@@ -38,6 +38,7 @@ function parseSits() {
                 blk.sits.push({
                     col: i,
                     row: curRow,
+                    sitTag: v,
                 })
             }
             return acc;
@@ -54,6 +55,7 @@ function parseSits() {
                 const rowCols = rowColMax - rowColMin;
                 const colPos = s.col - rowColMin;
                 return ({
+                    sitTag: s.sitTag,
                     side: colPos < rowCols / 3 ? 'A' : colPos > rowCols * 2 / 3 ? 'C' : 'B',
                     col: s.col - b.min,
                     row: s.row - b.minRow,
