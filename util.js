@@ -6,6 +6,10 @@ const gs = require('./getSheet');
 const credentials = require('./credentials.json');
 const nodemailer = require('nodemailer');
 
+async function getTemplates(sheet) {
+    const templates = (await sheet.readValues(`'Template'!A1:C100`));
+    return templates;
+}
 function parseSits() {
     const lines = fs.readFileSync('./sitConfig.txt').toString().split('\n');
     const starts = lines[0].split('\t').reduce((acc, l, i) => {
@@ -321,7 +325,7 @@ async function sendEmail() {
     const nextSunday = nextSundays[0];
     console.log(`nextSunday=${nextSunday}`);
     
-    const template = (await sheet.readValues(`'Template'!A1:A1`))[0][0];
+    const templates = await getTemplates(sheet);
     
     const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:E300`).catch(err => {
         console.log('Unable to load fixed')
@@ -357,8 +361,9 @@ async function sendEmail() {
     });
 
     const getUserKey = g => `${g.name}-${g.email}`;
+    const emailTemplate = templates.filter(f => f[0] === 'emailTemplate')[0][1];
     const sent = await Promise.map(generated.filter(x => x), async g => {        
-        const html = template.replace(/{name}/g, g.name).replace(/\{sit\}/g, g.side)
+        const html = emailTemplate.replace(/{name}/g, g.name).replace(/\{sit\}/g, g.side)
             .replace(/{imgSrc}/g, g.imgSrc).replace(/{email}/g, g.email)
         .replace(/{key}/g,g.key)
         //console.log(html)
@@ -419,6 +424,7 @@ module.exports = {
     generateBlockSits,
     getDisplayData,
     blockKeyIdToSide,
+    getTemplates,
     sendEmail,
 }
 

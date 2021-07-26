@@ -1,5 +1,5 @@
 R																	R																			R																			R															
-1							X	X	X	X	X	X	X	X	X		1									X	X	X	X	X	X	X	X	X		1		X	X	X	X	X	X												1		X	X	X	X	X	X	X	X	X					
+1							X	X	X	X	X	X	X	X	X		1									N	X	N	X	N	X	N	X	N		1		X	X	X	X	X	X												1		X	X	X	X	X	X	X	X	X					
 2						X	X	X	X	X	X	X	X	X	X		2								X	N	X	N	N	X	N	X	N	X		2		X	X	X	X	X	X	X	X	X	X								2		N	X	N	X	N	X	N	X	N	X				
 3						X	X	X	X	X	X	X	X	X	X		3							X	N	X	N	X	N	X	N	X	N	X		3		X	X	X	X	X	X	X	X	X	X	X							3		X	N	X	N	X	N	X	N	X	N				
 4					X	X	X	X	X	X	X	X	X	X	X		4							N	X	N	X	N	X	N	X	N	X	N		4		X	X	X	X	X	X	X	X	X	X	X							4		N	X	N	X	N	X	N	X	N	X	N			

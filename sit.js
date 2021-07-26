@@ -50,6 +50,12 @@ const sheet = client.getSheetOps(credentials.sheetId);
     }
   });
 
+  const templates = await utils.getTemplates(sheet);
+
+  const emailToFuncMappings = templates.filter(f => f[0] === 'mapping' && f[1] && f[2]).reduce((acc, f) => {
+    acc[f[2]] = f[1];
+    return acc;
+  }, {});
 
 const preSits = fixedInfo.reduce((acc,f) => {
   if (f[4])
@@ -158,7 +164,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
       quantity: 1,
       emails: [email],
       names: [name],
-      name,
+      name,      
       order_id,
       key,
       pos,
@@ -201,6 +207,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
         pos: acc.ary.length,
         id: acc.ary.length + 1,
         name: att.profile.name,
+        email: att.profile.email,
       };
       acc.oid[att.order_id] = ord;      
       acc.ary.push(ord);
@@ -433,7 +440,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
 
   //const choreNames = ['詩 ', '詩-'];
   preFixesInfo.forEach(prefixInfo => {
-    names.filter(n => n.name.startsWith(prefixInfo.prefix)).forEach(n => {
+    names.filter(n => n.name.startsWith(prefixInfo.prefix) || emailToFuncMappings[n.email] === prefixInfo.prefix).forEach(n => {
       fitSection(n, prefixInfo.pos, prefixInfo.colStart);
     });
     if (prefixInfo.forceFillEnd) {
