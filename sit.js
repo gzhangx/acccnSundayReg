@@ -36,7 +36,7 @@ IT 執事	D9
 
 const client = await gs.getClient('gzprem');
 const sheet = client.getSheetOps(credentials.sheetId);
-  const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:D300`).catch(err => {
+  const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:E300`).catch(err => {
     console.log('Unable to load fixed')
     console.log(err.response.body);
     return [];
@@ -52,8 +52,8 @@ const sheet = client.getSheetOps(credentials.sheetId);
 
 
 const preSits = fixedInfo.reduce((acc,f) => {
-  if (f[3])
-    acc[`${f[0].trim()}:${f[1].trim()}`.toLowerCase()] = f;
+  if (f[4])
+    acc[f[0]] = f;
   return acc;
 }, {});
 
@@ -147,10 +147,11 @@ const preSits = fixedInfo.reduce((acc,f) => {
     }
   }
   
-  const preSiteItems = fixedInfo.filter(v => v[3]).map((v,pos) => {    
-    const name = v[0];
-    const email = v[1];
-    const blkRowId = v[3];
+  const preSiteItems = fixedInfo.filter(v => v[3]).map((v, pos) => {
+    const order_id = v[0];
+    const name = v[1];
+    const email = v[2];
+    const blkRowId = v[4];
     const rc = blkRowId.slice(1).split('-');
     const key = `${name}:${email}`.toLocaleLowerCase();
     return {
@@ -158,6 +159,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
       emails: [email],
       names: [name],
       name,
+      order_id,
       key,
       pos,
       id: pos + 1,
@@ -184,7 +186,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     let ord = acc.oid[att.order_id];
     const key = `${att.profile.name}:${att.profile.email}`.toLocaleLowerCase();
     //console.log(`attend ${key} order ${att.order_id} ${att.cancelled}  ${att.status}`);
-    const existing = preSits[key];
+    const existing = preSits[att.order_id];
     if (existing) {
       return acc;
     }
@@ -193,6 +195,8 @@ const preSits = fixedInfo.reduce((acc,f) => {
         quantity: 0,
         emails: [],
         names: [],
+        keys: [],
+        order_id: att.order_id,
         key,
         pos: acc.ary.length,
         id: acc.ary.length + 1,
@@ -204,6 +208,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     ord.quantity++;
     ord.emails.push(att.profile.email);
     ord.names.push(att.profile.name);
+    ord.keys.push(key);
     return acc;
   }, {
     ary: preSiteItems, oid: {}
@@ -474,7 +479,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
       })
     });
     const userInfo = [
-      ['Code', 'Name', 'Quantity', 'Email'],
+      ['Order','Code', 'Name', 'Quantity', 'Email'],
       ...names.map(n => [n.id, n.names.join(','), n.quantity, n.emails.join(',')])
     ];
     sheet.getRange(namesStartRow, 1, names.length + 1, 4).setValues(
@@ -508,7 +513,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     const { sheetId } = sheetInfo;
     const userInfo = [
       ['Code', 'Quantity', '','Pos','','', 'Name', 'Email','ActualPos'],
-      ...names.filter(f=>f.posInfo).map(n => [n.id, n.quantity, n.pos, n.posInfo.block, getDisplayRow(n.posInfo.row).toString(), n.posInfo.side,  n.names.join(','), n.emails.join(','), `r=${n.posInfo.rowInfo.row} c=${n.posInfo.rowInfo.col}`])
+      ...names.filter(f => f.posInfo).map(n => [n.id, n.quantity, n.pos, n.posInfo.block, getDisplayRow(n.posInfo.row).toString(), n.posInfo.side,  n.names.join(','), n.emails.join(','), `r=${n.posInfo.rowInfo.row} c=${n.posInfo.rowInfo.col}`])
     ];
  
     // console.log('names==>')
@@ -518,8 +523,9 @@ const preSits = fixedInfo.reduce((acc,f) => {
     //     ...n,
     //   }
     // }));
+    const uoff = 1;
     const userData = userInfo.map(u => {
-      return [u[0].toString(), '', '', '', u[1].toString(), '', '', '', '', { type: 'userColor', val: u[2] }, u[3], u[4], u[5], '', u[6], '', '', '', '', '', '', u[7], '', '', '', '', '', '', '', '', '', '',u[8]];
+      return [u[0].toString(), '', '', '', u[1].toString(), '', '', '', '', { type: 'userColor', val: u[2] }, u[3], u[4], u[5], '', u[6], '', '', '', '', '', '', u[7], '', '', '', '', '', '', '', '', '', '', u[uoff +8]];
     }).map(r => {
       return {
         values: r.map(o => {
@@ -697,8 +703,8 @@ const preSits = fixedInfo.reduce((acc,f) => {
       });
     }
     await sheet.doBatchUpdate(updateData);
-    await sheet.updateValues(`'${nextSunday}'!A1:D${userInfo.length + 1}`, names.filter(n=>n.posInfo).map(n => {      
-      return [n.names.join(','), n.emails.join(','), `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${n.posInfo.side}`
+    await sheet.updateValues(`'${nextSunday}'!A1:E${userInfo.length + 1}`, names.filter(n=>n.posInfo).map(n => {      
+      return [n.order_id,n.names.join(','), n.emails.join(','), `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${n.posInfo.side}`
         , `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`
       ];
     }));
