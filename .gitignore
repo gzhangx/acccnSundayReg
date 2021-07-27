@@ -3,3 +3,4 @@ node_modules
 jlStatement.json
 cardStatement.json
 temp
+.vscode

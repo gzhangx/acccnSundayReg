@@ -327,22 +327,23 @@ async function sendEmail() {
     
     const templates = await getTemplates(sheet);
     
-    const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:E300`).catch(err => {
+    const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:F300`).catch(err => {
         console.log('Unable to load fixed')
         console.log(err.response.body);
         return [];
     });
     
     const generated = await Promise.map(fixedInfo, async inf => {
-        const name = inf[0];
-        const email = inf[1];
-        const side = inf[2];
-        const key = inf[3];
-        const finished = inf[4];
+        const id = inf[0];
+        const name = inf[1];
+        const email = inf[2];
+        const side = inf[3];
+        const key = inf[4];
+        const finished = inf[5];
         if (finished) return null;
         //inf[4] = 'sent';
         return {
-            name, email, side, key,
+            id,name, email, side, key,
             imgSrc: await generateImag(key),
         }
     }, { concurrency: 5 });
@@ -359,8 +360,7 @@ async function sendEmail() {
         },
         auth: credentials.msauth
     });
-
-    const getUserKey = g => `${g.name}-${g.email}`;
+    
     const emailTemplate = templates.filter(f => f[0] === 'emailTemplate')[0][1];
     const sent = await Promise.map(generated.filter(x => x), async g => {        
         const html = emailTemplate.replace(/{name}/g, g.name).replace(/\{sit\}/g, g.side)
@@ -381,17 +381,16 @@ async function sendEmail() {
             console.log(`failed email ${g.name} ${g.email}`);
             return null;
         }
-        return getUserKey(g);
+        return g.id;
     }, { concurrency: 2 });
 
 
     fixedInfo.forEach(g => {
-        const key = `${g[0]}-${g[1]}`
-        if (sent.find(k => k == key)) {
-            g[4] = 'sent';
+        if (sent.find(k => k == g[0])) {
+            g[5] = 'sent';
         }
     })
-    await sheet.updateValues(`'${nextSunday}'!A1:E${fixedInfo.length}`, fixedInfo);
+    await sheet.updateValues(`'${nextSunday}'!A1:F${fixedInfo.length}`, fixedInfo);
 }
 
 module.exports = {
