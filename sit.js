@@ -122,6 +122,9 @@ const preSits = fixedInfo.reduce((acc,f) => {
     console.log(eventsMapped);
     return;
   }
+
+  const eventName = nextGoodEvent.name.text;
+  console.log(`Event name ${eventName}`);
   
   let attendees = [];
   let attendeesPrms = null;
@@ -720,11 +723,12 @@ const preSits = fixedInfo.reduce((acc,f) => {
       });
     }
     await sheet.doBatchUpdate(updateData);
-    await sheet.updateValues(`'${nextSunday}'!A1:E${userInfo.length + 1}`, names.filter(n=>n.posInfo).map(n => {      
+    await sheet.updateValues(`'${nextSunday}'!A1:E${userInfo.length + 2}`,
+      [[eventName,'','','','']].concat(names.filter(n => n.posInfo).map(n => {
       return [n.order_id,n.names.join(','), n.emails.join(','), `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${n.posInfo.side}`
         , `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`
       ];
-    }));
+    })));
 
     //await utils.sendEmail();
   }
@@ -733,6 +737,6 @@ const preSits = fixedInfo.reduce((acc,f) => {
 
 if (isLocal) {
   myFunction().catch(err => {
-    console.log(get(err, 'response.body') || err);    
+    console.log(get(err, 'response.body') || err);
   });
 }
