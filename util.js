@@ -410,7 +410,7 @@ async function initAll() {
                 g[5] = 'sent';
             }
         })
-        await sheet.updateValues(`'${nextSunday}'!A1:F${fixedInfo.length}`, fixedInfo);
+        await sheet.updateValues(`'${nextSunday}'!A1:F${fixedInfo.length+1}`, [[eventTitle]].concat(fixedInfo));
     }
 
     return {
