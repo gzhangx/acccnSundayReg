@@ -375,12 +375,22 @@ async function initAll() {
             //console.log(html)
             try {
                 console.log(`Sending to ${g.email}`);
+                const ind = g.imgSrc.indexOf('base64,');
+                content = g.imgSrc.substr(ind + 7);
                 await transporter.sendMail({
                     from: credentials.msauth.user,
                     subject: 'Church siting (教会座位)',
                     to: g.email,
                     //subject: 'Nodemailer is unicode friendly ✔',            
                     html,
+                    attachments: [
+                        {
+                            filename: 'sit.jpg',
+                            content,
+                            encoding: 'base64',
+                            cid:'sit.jpg@cid',
+                        }
+                    ]
                 });
             } catch (err) {
                 console.log(err);
