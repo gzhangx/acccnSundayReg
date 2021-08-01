@@ -3,4 +3,9 @@ const isLocal = true;
 
 
 const utils = require('./util');
-utils.sendEmail();
+async function doWork() {
+    const initInfo = await utils.initAll();
+    await initInfo.sendEmail();
+}
+doWork();
+//utils.sendEmail();
