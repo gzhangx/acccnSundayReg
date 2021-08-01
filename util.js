@@ -111,11 +111,15 @@ async function initAll() {
     const nextSunday = nextSundays[0];
     console.log(`nextSunday=${nextSunday}`);
 
-    const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:F300`).catch(err => {
+    const fixedInfoFull = await sheet.readValues(`'${nextSunday}'!A1:F300`).catch(err => {
         console.log('Unable to load fixed')
         console.log(err.response.body);
         return [];
     });
+
+    const eventTitle = fixedInfoFull[0][0];
+    const fixedInfo = fixedInfoFull.slice(1);
+    console.log(`event ${eventTitle}`);
 
     const blockSpacing = 2;
     const fMax = (acc, cr) => acc < cr ? cr : acc;
@@ -379,7 +383,7 @@ async function initAll() {
                 content = g.imgSrc.substr(ind + 7);
                 await transporter.sendMail({
                     from: credentials.msauth.user,
-                    subject: 'Church siting (教会座位)',
+                    subject: `${eventTitle} Church siting (教会座位)`,
                     to: g.email,
                     //subject: 'Nodemailer is unicode friendly ✔',            
                     html,
