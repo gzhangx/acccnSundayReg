@@ -1,9 +1,9 @@
 
 const isLocal = true;
 
-const gs = require('./getSheet');
-const fs = require('fs');
-const request = require('superagent');
+//const gs = require('./getSheet');
+//const fs = require('fs');
+//const request = require('superagent');
 const { get, sortBy } = require('lodash');
 
 const debugComplted = false;
@@ -29,13 +29,13 @@ IT 執事	D9
   */  
 
 
+  const initInfo = await utils.initAll();
 
-  const nextSundays = utils.getNextSundays();
+  const nextSundays = initInfo.nextSundays;
   const nextSunday = nextSundays[0];
-  console.log(`nextSunday=${nextSunday}`);
 
-const client = await gs.getClient('gzprem');
-const sheet = client.getSheetOps(credentials.sheetId);
+//const client = await gs.getClient('gzprem');
+  const sheet = initInfo.sheet; //client.getSheetOps(credentials.sheetId);
   const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:E300`).catch(err => {
     console.log('Unable to load fixed')
     console.log(err.response.body);
@@ -50,7 +50,7 @@ const sheet = client.getSheetOps(credentials.sheetId);
     }
   });
 
-  const templates = await utils.getTemplates(sheet);
+  const templates = initInfo.templates;
 
   const emailToFuncMappings = templates.filter(f => f[0] === 'mapping' && f[1] && f[2]).reduce((acc, f) => {
     acc[f[2]] = f[1];
@@ -64,7 +64,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
 }, {});
 
 
-  const { pureSitConfig, getDisplayRow, CELLSIZE, blkLetterToId, numRows } = utils;
+  const { pureSitConfig, getDisplayRow, CELLSIZE, blkLetterToId, numRows } = initInfo;
 //console.log(pureSitConfig.map(s=>({cols: s.cols, rows: s.rows})))
 //return console.log(pureSitConfig.map(r => r.sits.map(v => v.map(vv => vv ? 'X' : ' ').join('')).join('\n')).join('\n'));
 
@@ -90,8 +90,11 @@ const preSits = fixedInfo.reduce((acc,f) => {
       return pages;
     }
   }
+
+  const searchTitle = get(templates.filter(t => t[0] === 'searchTitle'),[0,1]) || credentials.eventTitle;
+  console.log(`trying to search event ${searchTitle}`);
   const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/',
-    { name_filter: credentials.eventTitle, time_filter: ebQueryStatus.time_filter }
+    { name_filter: searchTitle, time_filter: ebQueryStatus.time_filter }
   );
   const eventsMappedNonFiltered = eventArys.events.map(e => {
     return {
@@ -247,8 +250,8 @@ const preSits = fixedInfo.reduce((acc,f) => {
 
 
   
-  const { blkMap } = utils;
-  const blockSits = utils.generateBlockSits(preSiteItemsByBlkRowId);
+  const { blkMap } = initInfo;
+  const blockSits = initInfo.generateBlockSits(preSiteItemsByBlkRowId);
 
 
   //const headers = [];
@@ -502,10 +505,10 @@ const preSits = fixedInfo.reduce((acc,f) => {
 
   } else {
     
-    const data = utils.getDisplayData(blockSits);
+    const data = initInfo.getDisplayData(blockSits);
         
-    const endColumnIndex = utils.STARTCol + utils.numCols;
-    console.log(`end col num=${utils.numCols} ${utils.STARTCol} end=${endColumnIndex}`);
+    const endColumnIndex = initInfo.STARTCol + initInfo.numCols;
+    console.log(`end col num=${initInfo.numCols} ${initInfo.STARTCol} end=${endColumnIndex}`);
     const sheetInfos = await sheet.sheetInfo();
     const sheetInfo = sheetInfos.find(s => s.title === sheetName);
     if (!sheetInfo) {
