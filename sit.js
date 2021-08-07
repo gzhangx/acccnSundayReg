@@ -68,9 +68,9 @@ IT 執事	D9
     const row = templates.filter(f => f[0] === 'ignoreBlocks')[0];
     if (!row) return [];
     try {
-      return JSON.parse(row);
+      return JSON.parse(row[1]);
     } catch (err) {
-      console.log('failed to parse ignoreBlocks');      
+      console.log(`failed to parse ignoreBlocks ${row[1]}`);      
     }
     return [];
   }
@@ -92,7 +92,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     if (prms) {
       url = url + '?' + Object.keys(prms).map(n => `${n}=${encodeURIComponent(prms[n])}`).join('&');
     }
-    console.log(`url=${url}`);
+    //console.log(`url=${url}`);
     if (isLocal) {
       //var response = await request.get("https://www.eventbriteapi.com/v3/events/156798329023/attendees").set('Authorization', authorizationToken).send();
       //pages = response.body
@@ -111,7 +111,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
   }
 
   const searchTitle = get(templates.filter(t => t[0] === 'searchTitle'),[0,1]) || credentials.eventTitle;
-  console.log(`trying to search event ${searchTitle}`);
+  //console.log(`trying to search event ${searchTitle}`);
   const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/',
     { name_filter: searchTitle, time_filter: ebQueryStatus.time_filter }
   );
@@ -158,6 +158,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     }
     break;
   }
+  console.log(`Total attendees ${attendees.length}`);
   if (false && isLocal) {    
     const fakeSizes = { 'gg1': 3, 'gg12': 4 ,'gg19':6,'gg22':8,'gg33':5};
     const fakeNames = [];
@@ -327,6 +328,8 @@ const preSits = fixedInfo.reduce((acc,f) => {
     }
     return false;
   }
+
+  let seated = 0;
   const fit = (who, reverse = false) => {
     if (who.posInfo) return true;
     //const ignoreBlocks = credentials.ignoreBlocks;
@@ -358,6 +361,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
               rowInfo: curRow[tryCol],
               side: 'A',              
             }
+            seated++;
             fited = true;
             return;
           } else if (side === 'right') {
@@ -380,6 +384,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
               rowInfo: curRow[ind],
               side: 'C',
             }
+            seated++;
           }
         });
       }
@@ -455,6 +460,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
                 rowInfo: curCell,
                 side: curCell.side,
               }
+              seated++;
             }
             return true;
           }
@@ -490,9 +496,15 @@ const preSits = fixedInfo.reduce((acc,f) => {
       }
     }
   });
+
+  let unableToSet = 0;
+  let totalSeated = 0;
   names.forEach(n => {
     if (!fit(n)) {
-      console.log(`Warning, unable to fit ${n.name}`)
+      console.log(`Warning, unable to fit ${n.name}`);
+      unableToSet++;
+    } else {
+      totalSeated++;
     }    
   });
 
@@ -531,7 +543,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     const data = initInfo.getDisplayData(blockSits);
         
     const endColumnIndex = initInfo.STARTCol + initInfo.numCols;
-    console.log(`end col num=${initInfo.numCols} ${initInfo.STARTCol} end=${endColumnIndex}`);
+    //console.log(`end col num=${initInfo.numCols} ${initInfo.STARTCol} end=${endColumnIndex}`);
     const sheetInfos = await sheet.sheetInfo();
     const sheetInfo = sheetInfos.find(s => s.title === sheetName);
     if (!sheetInfo) {
@@ -679,14 +691,14 @@ const preSits = fixedInfo.reduce((acc,f) => {
         })
       }
       if (requests.length) {        
-        console.log(`updating column endColumnIndex=${endColumnIndex} sheetInfo.columnCount=${sheetInfo.columnCount} ${endColumnIndex > sheetInfo.columnCount}` );
-        console.log({
-          sheetId,
-          dimension: 'COLUMNS',
-          length: endColumnIndex - sheetInfo.columnCount,
-        })
+        //console.log(`updating column endColumnIndex=${endColumnIndex} sheetInfo.columnCount=${sheetInfo.columnCount} ${endColumnIndex > sheetInfo.columnCount}` );
+        //console.log({
+        //  sheetId,
+        //  dimension: 'COLUMNS',
+        //  length: endColumnIndex - sheetInfo.columnCount,
+        //})
         await sheet.doBatchUpdate({ requests });
-        console.log('column updated');
+        //console.log('column updated');
       }
     }
     await sheet.doBatchUpdate({
@@ -753,10 +765,22 @@ const preSits = fixedInfo.reduce((acc,f) => {
     //await utils.sendEmail();
   }
 
+  return {
+    seated,
+    unableToSet,
+    totalSeated,
+  }
 }
 
 if (isLocal) {
-  myFunction().catch(err => {
+  myFunction()
+    .then(res => {
+      console.log(`new seat = ${res.seated}, totalSeated=${res.totalSeated}`);
+      if (res.unableToSet) {
+        console.log(`!!!!!!!!!!!!!!!!Unable to seat ${res.unableToSet}`);
+      }
+    })
+    .catch(err => {
     console.log(get(err, 'response.body') || err);
   });
 }
