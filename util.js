@@ -5,6 +5,7 @@ const Promise = require('bluebird');
 const gs = require('./getSheet');
 const credentials = require('./credentials.json');
 const nodemailer = require('nodemailer');
+const { get } = require('lodash');
 
 async function getTemplates(sheet) {
     const templates = (await sheet.readValues(`'Template'!A1:C100`));
@@ -117,7 +118,7 @@ async function initAll() {
         return [];
     });
 
-    const eventTitle = fixedInfoFull[0][0];
+    const eventTitle = get(fixedInfoFull,[0,0]) || 'NA';
     const fixedInfo = fixedInfoFull.slice(1);
     console.log(`event ${eventTitle}`);
 
