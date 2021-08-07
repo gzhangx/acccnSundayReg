@@ -43,7 +43,7 @@ IT 執事	D9
 
 //const client = await gs.getClient('gzprem');
   const sheet = initInfo.sheet; //client.getSheetOps(credentials.sheetId);
-  const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:E300`).catch(err => {
+  const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:F300`).catch(err => {
     console.log('Unable to load fixed')
     console.log(err.response.body);
     return [];
@@ -755,10 +755,12 @@ const preSits = fixedInfo.reduce((acc,f) => {
       });
     }
     await sheet.doBatchUpdate(updateData);
-    await sheet.updateValues(`'${nextSunday}'!A1:E${userInfo.length + 2}`,
-      [[eventName,'','','','']].concat(names.filter(n => n.posInfo).map(n => {
+    console.log('update next')
+    await sheet.updateValues(`'${nextSunday}'!A1:F${userInfo.length + 2}`,
+      [[eventName, '', '', '', '']].concat(names.filter(n => n.posInfo).map(n => {
       return [n.order_id,n.names.join(','), n.emails.join(','), `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${n.posInfo.side}`
         , `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`
+        ,get(preSits,[n.order_id,5])||''
       ];
     })));
 
