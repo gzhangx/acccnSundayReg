@@ -64,6 +64,18 @@ IT 執事	D9
     return acc;
   }, {});
 
+  const parseIgnoreBlocks = () => {
+    const row = templates.filter(f => f[0] === 'ignoreBlocks')[0];
+    if (!row) return [];
+    try {
+      return JSON.parse(row);
+    } catch (err) {
+      console.log('failed to parse ignoreBlocks');      
+    }
+    return [];
+  }
+  const ignoreBlocks = parseIgnoreBlocks();
+
 const preSits = fixedInfo.reduce((acc,f) => {
   if (f[4])
     acc[f[0]] = f;
@@ -317,12 +329,13 @@ const preSits = fixedInfo.reduce((acc,f) => {
   }
   const fit = (who, reverse = false) => {
     if (who.posInfo) return true;
+    //const ignoreBlocks = credentials.ignoreBlocks;
     let fited = false;
     for (let rowInc = 0; rowInc < numRows; rowInc++) {      
       const row = reverse ? numRows - rowInc - 1 : rowInc;
       for (let blki = 0; blki < blockSits.length; blki++) {
         if (!pureSitConfig[blki].goodRowsToUse[rowInc]) continue;
-        if (credentials.ignoreBlocks[blki]) continue;
+        if (ignoreBlocks[blki]) continue;
         const curBlock = blockSits[blki];
         //if (!curBlock) continue;
         const curRow = curBlock[row]?.filter(x=>x);
@@ -381,7 +394,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
       for (let row = 0; row < numRows; row++) {
         for (let blki = 0; blki < blockSits.length; blki++) {
           if (!pureSitConfig[blki].goodRowsToUse[row]) continue;
-          if (credentials.ignoreBlocks[blki]) continue;
+          if (ignoreBlocks[blki]) continue;
           const curBlock = blockSits[blki];
           if (!curBlock) continue;
           if (!curBlock[row]) {
