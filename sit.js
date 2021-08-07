@@ -18,14 +18,21 @@ const utils = require('./util');
 async function myFunction() {
 
   /* current saved
-主席領詩	D0
+主席領詩	C0
 司琴	A1
 帶位	B11
+带位	B11
 敬拜	B0
 投影	D8
 音效	D8
-牧師	D0	4
+牧師	C0
 IT 執事	D9
+诗班	B0
+執事	D9
+領詩	C0
+講員	C0
+詩班	B0
+领诗	B0
   */  
 
 
