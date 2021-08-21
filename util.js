@@ -375,7 +375,7 @@ async function initAll() {
         });
     
         const emailTemplate = templates.filter(f => f[0] === 'emailTemplate')[0][1];
-        const sent = await Promise.map(generated.filter(x => x), async g => {
+        const sent = await Promise.map(generated.filter(x => x), async g => {            
             const html = emailTemplate.replace(/{name}/g, g.name).replace(/\{sit\}/g, g.side)
                 .replace(/{imgSrc}/g, g.imgSrc).replace(/{email}/g, g.email)
                 .replace(/{key}/g, g.key)
