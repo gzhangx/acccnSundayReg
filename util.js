@@ -108,9 +108,11 @@ async function initAll() {
 
     const templates = await getTemplates(sheet);
     const pack = templates.filter(f => f[0] === 'pack').map(f => parseInt(f[1] || 1))[0] || 2;
+    const colNumDisplay = templates.filter(f => f[0] === 'colNumDisplay')?.[0]?.[1];
+    
     const nextSundays = getNextSundays();
     const nextSunday = nextSundays[0];
-    console.log(`nextSunday=${nextSunday}`);
+    console.log(`nextSunday=${nextSunday} column Display ${colNumDisplay}`);
 
     const fixedInfoFull = await sheet.readValues(`'${nextSunday}'!A1:F300`).catch(err => {
         console.log('Unable to load fixed')
@@ -451,6 +453,7 @@ async function initAll() {
         blockKeyIdToSide,
         getTemplates,
         sendEmail,
+        colNumDisplay,
     };
 }
 module.exports = {

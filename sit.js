@@ -37,7 +37,6 @@ IT 執事	D9
 
 
   const initInfo = await utils.initAll();
-
   const nextSundays = initInfo.nextSundays;
   const nextSunday = nextSundays[0];
 
@@ -83,7 +82,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
 }, {});
 
 
-  const { pureSitConfig, getDisplayRow, CELLSIZE, blkLetterToId, numRows } = initInfo;
+  const { pureSitConfig, getDisplayRow, CELLSIZE, blkLetterToId, numRows, colNumDisplay } = initInfo;
 //console.log(pureSitConfig.map(s=>({cols: s.cols, rows: s.rows})))
 //return console.log(pureSitConfig.map(r => r.sits.map(v => v.map(vv => vv ? 'X' : ' ').join('')).join('\n')).join('\n'));
 
@@ -348,7 +347,8 @@ const preSits = fixedInfo.reduce((acc,f) => {
           if (side === 'left') {
             let tryCol = 0;
             if (curRow[tryCol].user) return;
-            while (curRow[tryCol].sitTag !== 'X') tryCol++;            
+            while (curRow[tryCol] && curRow[tryCol].sitTag !== 'X') tryCol++;
+            if (!curRow[tryCol]) return false;
             for (let i = 0; i < who.quantity; i++){
               if (!curRow[tryCol+i].user)
                 curRow[tryCol+i].user = who;
@@ -367,9 +367,10 @@ const preSits = fixedInfo.reduce((acc,f) => {
           } else if (side === 'right') {
             let ind = curRow.length - 1;
             if (curRow[ind].user) return;
-            while (curRow[ind].sitTag !== 'X') {
+            while (curRow[ind] && curRow[ind].sitTag !== 'X') {
               ind--;
             }
+            if (!curRow[ind]) return;
             const toSearch = ind - who.quantity - siteSpacing;
             for (let i = ind; i >= toSearch; i--) {
               if (curRow[i].user) return;
@@ -577,7 +578,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     // }));
     const uoff = 1;
     const userData = userInfo.map(u => {
-      return [u[0].toString(), '', '', '', u[1].toString(), '', '', '', '', { type: 'userColor', val: u[2] }, u[3], u[4], u[5], '', u[6], '', '', '', '', '', '', u[7], '', '', '', '', '', '', '', '', '', '', u[uoff +8]];
+      return [u[0].toString(), '', '', '', u[1].toString(), '', '', '', '', { type: 'userColor', val: u[2] }, u[3], u[4], !u[5]?'':colNumDisplay||u[5], '', u[6], '', '', '', '', '', '', u[7], '', '', '', '', '', '', '', '', '', '', u[uoff +8]];
     }).map(r => {
       return {
         values: r.map(o => {
@@ -758,7 +759,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     console.log('update next')
     await sheet.updateValues(`'${nextSunday}'!A1:F${userInfo.length + 2}`,
       [[eventName, '', '', '', '']].concat(names.filter(n => n.posInfo).map(n => {
-      return [n.order_id,n.names.join(','), n.emails.join(','), `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${n.posInfo.side}`
+        return [n.order_id, n.names.join(','), n.emails.join(','), `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${colNumDisplay || n.posInfo.side}`
         , `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`
         ,get(preSits,[n.order_id,5])||''
       ];
