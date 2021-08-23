@@ -53,7 +53,9 @@ IT 執事	D9
   const templates = initInfo.templates;
 
   const debugComplted = !!templates.filter(f => f[0] === 'debugCompleted' && f[1] === 'TRUE').length;
-  console.log(debugComplted)
+  if (debugComplted) {
+    console.log(`Warning, debug mode`);
+  }
   const ebQueryStatus = {
     time_filter: debugComplted ? 'past' : 'current_future',
     status: debugComplted ? 'completed' : 'live'
