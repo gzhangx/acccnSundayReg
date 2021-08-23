@@ -244,7 +244,10 @@ const preSits = fixedInfo.reduce((acc,f) => {
     }
   });
   const preSiteItemsByBlkRowId = preSiteItems.reduce((acc, r) => {
-    acc[r.blkRowId] = r;
+    if (!acc[r.blkRowId]) {
+      acc[r.blkRowId] = [];
+    }
+    acc[r.blkRowId].push(r);
     return acc;
   }, {});
   //return console.log(preSiteItems)
@@ -573,22 +576,38 @@ const preSits = fixedInfo.reduce((acc,f) => {
       console.log(`sheet ${sheetName} not found`);
     }
     
-    if (!sheetInfos.find(s => s.title === nextSunday)) {
-      let freeInd = 0;
-      while (true) {
-        if (sheetInfos.find(s => s.sheetId === freeInd)) {
-          freeInd++;
-          continue;
+    const createSheet = async (name, freeInd) => {
+      if (!sheetInfos.find(s => s.title === name)) {
+        while (true) {
+          if (sheetInfos.find(s => s.sheetId === freeInd)) {
+            freeInd++;
+            continue;
+          }
+          break;
         }
-        break;
+        console.log(`freeInd ${freeInd}`);
+        await sheet.createSheet(freeInd, name);
       }
-      console.log(`freeInd ${freeInd}`);
-      await sheet.createSheet(freeInd, nextSunday);
-    }
+      return freeInd;
+    };
+
+    let freeInd = await createSheet(nextSunday, 0);
+    freeInd = await createSheet(`${nextSunday}Display`, freeInd);
+    
     const { sheetId } = sheetInfo;
+    const namesFlattened = sortBy(names.filter(f => f.posInfo).reduce((acc, n) => {
+      for (let i = 0; i < n.names.length; i++) {
+        acc.push({
+          ...n,
+          namesj: n.names[i],
+          emailsj:n.emails[i],
+        })
+      }
+      return acc;
+    },[]),'namesj');
     const userInfo = [
       ['Code', 'Quantity', '','Pos','','', 'Name', 'Email','ActualPos'],
-      ...names.filter(f => f.posInfo).map(n => [n.id, n.quantity, n.pos, n.posInfo.block, getDisplayRow(n.posInfo.row).toString(), n.posInfo.side,  n.names.join(','), n.emails.join(','), `r=${n.posInfo.rowInfo.row} c=${n.posInfo.rowInfo.col}`])
+      ...namesFlattened.filter(f => f.posInfo).map(n => [n.id, n.quantity, n.pos, n.posInfo.block, getDisplayRow(n.posInfo.row).toString(), n.posInfo.side,  n.namesj, n.emailsj, `r=${n.posInfo.rowInfo.row} c=${n.posInfo.rowInfo.col}`])
     ];
  
     // console.log('names==>')
@@ -780,12 +799,22 @@ const preSits = fixedInfo.reduce((acc,f) => {
     await sheet.doBatchUpdate(updateData);
     console.log('update next')
     await sheet.updateValues(`'${nextSunday}'!A1:F${userInfo.length + 2}`,
-      [[eventName, '', '', '', '']].concat(names.filter(n => n.posInfo).map(n => {
-        return [n.order_id, n.names.join(','), n.emails.join(','), `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${colNumDisplay || n.posInfo.side}`
+      [[eventName, '', '', '', '']].concat(namesFlattened.map(n => {
+        return [n.order_id, n.namesj, n.emailsj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${colNumDisplay || n.posInfo.side}`
         , `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`
         ,get(preSits,[n.order_id,5])||''
       ];
-    })));
+      })));
+    
+    
+    const sortByRow = sortBy(namesFlattened, n => `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`);
+    await sheet.updateValues(`'${nextSunday}Display'!A1:F${userInfo.length + 2}`,
+      [[eventName, '', '', '', '']].concat(namesFlattened.map((n,rown) => {
+        return [n.order_id, n.namesj, n.emailsj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${colNumDisplay || n.posInfo.side}`
+          , `${sortByRow[rown].posInfo.block}${sortByRow[rown].posInfo.rowInfo.row}`
+          , sortByRow[rown].name
+        ];
+      })));
 
     //await utils.sendEmail();
   }

@@ -226,12 +226,14 @@ async function initAll() {
                             row: STARTRow + r.row,
                         }
                     };
-                    const user = preSiteItemsByBlkRowId[blk.blkRowId];
-                    if (user) {
-                        blk.user = user;
-                        user.posInfo.rowInfo = blk;
-                        //user.posInfo.side = `${blk.side}-${user.posInfo.side}`;
-                        user.posInfo.side = blk.side;
+                    const users = preSiteItemsByBlkRowId[blk.blkRowId];
+                    if (users) {
+                        users.forEach(user => {
+                            blk.user = user;
+                            user.posInfo.rowInfo = blk;
+                            //user.posInfo.side = `${blk.side}-${user.posInfo.side}`;
+                            user.posInfo.side = blk.side;
+                        });
                     }
                     return blk;
                 });
