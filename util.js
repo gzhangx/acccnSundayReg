@@ -8,7 +8,7 @@ const nodemailer = require('nodemailer');
 const { get } = require('lodash');
 
 async function getTemplates(sheet) {
-    const templates = (await sheet.readValues(`'Template'!A1:C100`));
+    const templates = (await sheet.readValues(`'Template'!A1:D100`));
     return templates;
 }
 function parseSits(pack=2) {

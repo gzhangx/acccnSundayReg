@@ -6,11 +6,7 @@ const isLocal = true;
 //const request = require('superagent');
 const { get, sortBy } = require('lodash');
 
-const debugComplted = false;
-const ebQueryStatus = {
-  time_filter: debugComplted?'past':'current_future',
-  status: debugComplted?'completed':'live'
-}
+
 
 const sheetName = 'Sheet1';
 const credentials = require('./credentials.json');
@@ -51,12 +47,50 @@ IT 執事	D9
     return {
       prefix: v[0],
       pos: v[1],
-      colStart: parseInt(v[2] || 0),
-      forceFillEnd: v[3],  //if found, block the rest of the sits to that space
     }
   });
 
   const templates = initInfo.templates;
+
+  const debugComplted = !!templates.filter(f => f[0] === 'debugCompleted' && f[1] === 'TRUE').length;
+  console.log(debugComplted)
+  const ebQueryStatus = {
+    time_filter: debugComplted ? 'past' : 'current_future',
+    status: debugComplted ? 'completed' : 'live'
+  }
+
+
+  const PREASSIGNEDSIT_ARYNAME = 'pprefixes';
+  const { preAssignedSits } = templates.filter(f => f[0] === 'assignedPrefixes').reduce((acc, f) => {
+    const prefixes = f[1].split(',');
+    const posRaw = f[2].split('-');
+    const blk = posRaw[0][0];
+    const nopack = f[3] === 'nopack';
+    posRaw[0] = posRaw[0].slice(1);
+    if (posRaw.length === 1) posRaw.push(posRaw[0]);
+    const from = posRaw[0];
+    const to = posRaw[1];
+    acc.preAssignedSits[blk] = acc.preAssignedSits[blk] || {};
+    prefixes.forEach(prefix => {
+      preFixesInfo.push({
+        prefix,
+        pos: `${blk}${from}`
+      })
+    });
+    if (nopack) return acc;
+    for (let i = from; i <= to; i++) {
+      const blki = acc.preAssignedSits[blk][i] || {
+        [PREASSIGNEDSIT_ARYNAME]:[]
+      };
+      acc.preAssignedSits[blk][i] = blki;
+      prefixes.forEach(pf => {
+        blki[PREASSIGNEDSIT_ARYNAME].push(pf);
+      })
+    }
+    return acc;
+  }, {
+    preAssignedSits: {},
+  });
 
   const emailToFuncMappings = templates.filter(f => f[0] === 'mapping' && f[1] && f[2]).reduce((acc, f) => {
     acc[f[2]] = f[1];
@@ -298,7 +332,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
 
 
   const siteSpacing = 2;
-  const fitSection = (who, sectionName, colStart) => {
+  const fitSection = (who, sectionName) => {
     if (who.posInfo) return true;    
     const blki = blkLetterToId[sectionName[0]]; //block B only , //B11
     const getRowFromSection = () => {
@@ -310,7 +344,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     for (let row = getRowFromSection(); row < numRows; row++) {
       const curRow = curBlock[row]?.filter(x => x);
       if (!curRow) break;
-      for (let i = colStart || 0; i < curRow.length; i++) {
+      for (let i = 0; i < curRow.length; i++) {
         const cri = curRow[i];
         if (!cri) continue;
         if (cri.sitTag !== 'X') continue;
@@ -338,6 +372,12 @@ const preSits = fixedInfo.reduce((acc,f) => {
       for (let blki = 0; blki < blockSits.length; blki++) {
         if (!pureSitConfig[blki].goodRowsToUse[rowInc]) continue;
         if (ignoreBlocks[blki]) continue;
+        const blkName = blkMap[blki];
+        const preAssignedNamesForSit = get(preAssignedSits, [blkName, row, PREASSIGNEDSIT_ARYNAME]);
+        if (preAssignedNamesForSit) {
+          const matched = preAssignedNamesForSit.find(pfx => who.name.startsWith(pfx));
+          if (!matched) continue;
+        }
         const curBlock = blockSits[blki];
         //if (!curBlock) continue;
         const curRow = curBlock[row]?.filter(x=>x);
@@ -472,30 +512,10 @@ const preSits = fixedInfo.reduce((acc,f) => {
   };
 
   //const choreNames = ['詩 ', '詩-'];
-  preFixesInfo.forEach(prefixInfo => {
+  preFixesInfo.filter(p => p.prefix).forEach(prefixInfo => {
     names.filter(n => n.name.startsWith(prefixInfo.prefix) || emailToFuncMappings[n.email] === prefixInfo.prefix).forEach(n => {
-      fitSection(n, prefixInfo.pos, prefixInfo.colStart);
+      fitSection(n, prefixInfo.pos);
     });
-    if (prefixInfo.forceFillEnd) {
-      const sectionName = prefixInfo.pos;
-      const blki = blkLetterToId[sectionName[0]]; //block B only , //B11
-      const getRowFromSection = () => {
-        const pt = sectionName.slice(1);
-        if (!pt) return 0;
-        return parseInt(pt);
-      }
-      const curBlock = blockSits[blki];
-      for (let row = getRowFromSection(); row < prefixInfo.forceFillEnd; row++) {
-        const curRow = curBlock[row]?.filter(x => x);
-        if (!curRow) break;
-        for (let i = prefixInfo.colStart || 0; i < curRow.length; i++) {
-          const cri = curRow[i];
-          if (!cri) continue;
-          if (cri.user) continue;
-          cri.user = 'DBGFILL';
-        }
-      }
-    }
   });
 
   let unableToSet = 0;
