@@ -40,7 +40,7 @@ IT 執事	D9
   const sheet = initInfo.sheet; //client.getSheetOps(credentials.sheetId);
   const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:F300`).catch(err => {
     console.log('Unable to load fixed')
-    console.log(err.response.body);
+    //console.log(err.response.body);
     return [];
   });
   const preFixesInfo = (await sheet.readValues(`'PreFixes'!A1:D300`)).map(v => {
@@ -585,14 +585,14 @@ const preSits = fixedInfo.reduce((acc,f) => {
           }
           break;
         }
-        console.log(`freeInd ${freeInd}`);
+        console.log(`freeInd for ${name} ${freeInd}`);
         await sheet.createSheet(freeInd, name);
       }
       return freeInd;
     };
 
     let freeInd = await createSheet(nextSunday, 0);
-    freeInd = await createSheet(`${nextSunday}Display`, freeInd);
+    freeInd = await createSheet(`${nextSunday}Display`, freeInd + 1);
     
     const { sheetId } = sheetInfo;
     const namesFlattened = sortBy(names.filter(f => f.posInfo).reduce((acc, n) => {

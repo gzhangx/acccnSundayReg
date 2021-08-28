@@ -116,7 +116,7 @@ async function initAll() {
 
     const fixedInfoFull = await sheet.readValues(`'${nextSunday}'!A1:F300`).catch(err => {
         console.log('Unable to load fixed')
-        console.log(err.response.body);
+        //console.log(err.response.body);
         return [];
     });
 
