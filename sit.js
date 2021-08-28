@@ -811,8 +811,8 @@ const preSits = fixedInfo.reduce((acc,f) => {
     await sheet.updateValues(`'${nextSunday}Display'!A1:F${userInfo.length + 2}`,
       [[eventName, '', '', '', '']].concat(namesFlattened.map((n,rown) => {
         return [n.order_id, n.namesj, n.emailsj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${colNumDisplay || n.posInfo.side}`
-          , `${sortByRow[rown].posInfo.block}${sortByRow[rown].posInfo.rowInfo.row}`
-          , sortByRow[rown].name
+          , `${sortByRow[rown].posInfo.block}${sortByRow[rown].posInfo.rowInfo.row+1}`
+          , sortByRow[rown].namesj
         ];
       })));
 
