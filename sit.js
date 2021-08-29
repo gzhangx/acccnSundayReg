@@ -43,12 +43,13 @@ IT 執事	D9
     //console.log(err.response.body);
     return [];
   });
-  const preFixesInfo = (await sheet.readValues(`'PreFixes'!A1:D300`)).map(v => {
-    return {
-      prefix: v[0],
-      pos: v[1],
-    }
-  });
+  const preFixesInfo = [];
+  //(await sheet.readValues(`'PreFixes'!A1:D300`)).map(v => {
+  //  return {
+  //    prefix: v[0],
+  //    pos: v[1],
+  //  }
+  //});
 
   const templates = initInfo.templates;
 
@@ -349,6 +350,12 @@ const preSits = fixedInfo.reduce((acc,f) => {
     for (let row = getRowFromSection(); row < numRows; row++) {
       const curRow = curBlock[row]?.filter(x => x);
       if (!curRow) break;
+      const blkName = blkMap[blki];
+      const preAssignedNamesForSit = get(preAssignedSits, [blkName, row, PREASSIGNEDSIT_ARYNAME]);
+      if (preAssignedNamesForSit) {
+        const matched = preAssignedNamesForSit.find(pfx => who.name.startsWith(pfx));
+        if (!matched) continue;
+      } else continue;
       for (let i = 0; i < curRow.length; i++) {
         const cri = curRow[i];
         if (!cri) continue;
