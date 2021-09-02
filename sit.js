@@ -5,9 +5,9 @@ const isLocal = true;
 //const fs = require('fs');
 //const request = require('superagent');
 const { get, sortBy } = require('lodash');
+const { toSimp } = require('./gbTran');
 
-
-
+const perfixOnLastName = true;
 const sheetName = 'Sheet1';
 const credentials = require('./credentials.json');
 const utils = require('./util');
@@ -65,7 +65,7 @@ IT 執事	D9
 
   const PREASSIGNEDSIT_ARYNAME = 'pprefixes';
   const { preAssignedSits } = templates.filter(f => f[0] === 'assignedPrefixes').reduce((acc, f) => {
-    const prefixes = f[1].split(',');
+    const prefixes = toSimp(f[1]).split(',');
     const posRaw = f[2].split('-');
     const blk = posRaw[0][0];
     const nopack = f[3] === 'nopack';
@@ -217,15 +217,17 @@ const preSits = fixedInfo.reduce((acc,f) => {
   
   const preSiteItems = fixedInfo.filter(v => v[3]).map((v, pos) => {
     const order_id = v[0];
-    const name = v[1];
+    const name = toSimp(v[1]);
     const email = v[2];
     const blkRowId = v[4];
+    const profile = v[5] ? JSON.parse(v[5]) : {};
     const rc = blkRowId.slice(1).split('-');
     const key = `${name}:${email}`.toLocaleLowerCase();
     return {
       quantity: 1,
       emails: [email],
       names: [name],
+      profiles: [profile],
       name,      
       order_id,
       key,
@@ -261,30 +263,50 @@ const preSits = fixedInfo.reduce((acc,f) => {
     if (existing) {
       return acc;
     }
+
+    const { profile } = att;
     if (!ord) {
       ord = {
         quantity: 0,
         emails: [],
         names: [],
+        profiles: [],
         keys: [],
         order_id: att.order_id,
         key,
         pos: acc.ary.length,
         id: acc.ary.length + 1,
-        name: att.profile.name,
-        email: att.profile.email,
+        name: toSimp(profile.name),
+        email: profile.email,
       };
       acc.oid[att.order_id] = ord;      
       acc.ary.push(ord);
     }
     ord.quantity++;
-    ord.emails.push(att.profile.email);
-    ord.names.push(att.profile.name);
+    
+    ord.emails.push(profile.email);
+    ord.names.push(toSimp(profile.name));
+    const pfInf = {
+      first_name: toSimp(profile.first_name),
+      last_name: toSimp(profile.last_name),
+      email: profile.email,
+      name: toSimp(profile.name),
+    };
+    preFixesInfo.find(p => {
+      if (perfixOnLastName) {
+        if (pfInf.first_name.startsWith(p.prefix)) {
+          pfInf.first_name = pfInf.first_name.substr(p.prefix.length).trim();
+          if (!pfInf.last_name.startsWith(p.prefix))
+            pfInf.last_name = `${p.prefix} ${pfInf.last_name}`;
+        }
+      }
+    });
+    ord.profiles.push(pfInf)
     ord.keys.push(key);
     return acc;
   }, {
     ary: preSiteItems, oid: {}
-  }).ary,'name');
+  }).ary,'order_id');
 
   let colors = [[0, 0, 255], [0, 255, 0], [255, 0, 0], [0, 255, 255], [255, 0, 255], [255, 200, 200]];
   let fontColor = ['#ffff00', '#ff00ff', '#00ffff', '#000000', '#000000', '#000000'];
@@ -604,10 +626,12 @@ const preSits = fixedInfo.reduce((acc,f) => {
     const { sheetId } = sheetInfo;
     const namesFlattened = sortBy(names.filter(f => f.posInfo).reduce((acc, n) => {
       for (let i = 0; i < n.names.length; i++) {
+        const pf = n.profiles[i];
         acc.push({
           ...n,
-          namesj: n.names[i],
-          emailsj:n.emails[i],
+          namesj: `${pf.last_name} ${pf.first_name}`, //n.names[i],
+          emailsj: n.emails[i],
+          profile: pf,
         })
       }
       return acc;
@@ -809,7 +833,8 @@ const preSits = fixedInfo.reduce((acc,f) => {
       [[eventName, '', '', '', '']].concat(namesFlattened.map(n => {
         return [n.order_id, n.namesj, n.emailsj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${colNumDisplay || n.posInfo.side}`
         , `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`
-        ,get(preSits,[n.order_id,5])||''
+        //,get(preSits,[n.order_id,5])||''
+        , JSON.stringify(n.profile)
       ];
       })));
     
