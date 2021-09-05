@@ -114,7 +114,7 @@ async function initAll() {
     const nextSunday = nextSundays[0];
     console.log(`nextSunday=${nextSunday} column Display ${colNumDisplay}`);
 
-    const fixedInfoFull = await sheet.readValues(`'${nextSunday}'!A1:F300`).catch(err => {
+    const fixedInfoFull = await sheet.readValues(`'${nextSunday}'!A1:G300`).catch(err => {
         console.log('Unable to load fixed')
         //console.log(err.response.body);
         return [];
@@ -354,11 +354,12 @@ async function initAll() {
             const email = inf[2];
             const side = inf[3];
             const key = inf[4];
-            const finished = inf[5];
+            const profile = inf[5];
+            const finished = inf[6];
             if (finished) return null;
             //inf[4] = 'sent';
             return {
-                id, name, email, side, key,
+                id, name, email, side, key, profile,
                 imgSrc: await generateImag(key),
             }
         }, { concurrency: 5 });
@@ -412,10 +413,10 @@ async function initAll() {
 
         fixedInfo.forEach(g => {
             if (sent.find(k => k == g[0])) {
-                g[5] = 'sent';
+                g[6] = 'sent';
             }
         })
-        await sheet.updateValues(`'${nextSunday}'!A1:F${fixedInfo.length+1}`, [[eventTitle]].concat(fixedInfo));
+        await sheet.updateValues(`'${nextSunday}'!A1:G${fixedInfo.length+1}`, [[eventTitle]].concat(fixedInfo));
     }
 
     return {
