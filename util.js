@@ -245,10 +245,10 @@ async function initAll() {
 
     async function generateImag(key) { //B2-5
         const preSiteItemsByBlkRowId = {
-            [key]: {
+            [key]: [{
                 id: 'U',
                 posInfo: {}
-            }
+            }]
         };
         const blockSits = generateBlockSits(preSiteItemsByBlkRowId);
         const data = getDisplayData(blockSits);
