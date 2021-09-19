@@ -59,8 +59,9 @@ IT 執事	D9
   }
   const ebQueryStatus = {
     time_filter: debugComplted ? 'past' : 'current_future',
-    status: debugComplted ? 'completed' : 'live'
+    status: debugComplted ? 'ended' : 'live'
   }
+
 
 
   const PREASSIGNEDSIT_ARYNAME = 'pprefixes';
@@ -621,7 +622,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     };
 
     let freeInd = await createSheet(nextSunday, 0);
-    freeInd = await createSheet(`${nextSunday}Display`, freeInd + 1);
+    const DisplaySheetId = await createSheet(`${nextSunday}Display`, freeInd + 1);
     
     const { sheetId } = sheetInfo;
     const namesFlattened = sortBy(names.filter(f => f.posInfo).reduce((acc, n) => {
@@ -839,14 +840,89 @@ const preSits = fixedInfo.reduce((acc,f) => {
       })));
     
     
+    const printRowsPerPage = 32;
+    const resd = userInfo.length % printRowsPerPage;
+    const totalLines = (resd > 0 ? printRowsPerPage * 2 : printRowsPerPage) + (parseInt(userInfo.length / printRowsPerPage) * printRowsPerPage);
+    
+    const hankDspRows = namesFlattened.concat(Array(totalLines - namesFlattened.length).fill({ isEmpty: true, text: '' }));
+    hankDspRows[namesFlattened.length] = { text: 'Tests title' };
     const sortByRow = sortBy(namesFlattened, n => `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`);
-    await sheet.updateValues(`'${nextSunday}Display'!A1:F${userInfo.length + 2}`,
-      [[eventName, '', '', '', '']].concat(namesFlattened.map((n,rown) => {
-        return [n.order_id, n.namesj, n.emailsj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${colNumDisplay || n.posInfo.side}`
+    /*
+    await sheet.updateValues(`'${nextSunday}Display'!A1:F${hankDspRows.length + 1}`,
+      hankDspRows.map((n, rown) => {
+        if (!sortByRow[rown]) {
+          return [n.text || ''];
+        }
+        //n.order_id, n.namesj, n.emailsj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}${colNumDisplay || n.posInfo.side}`
+        //  , `${sortByRow[rown].posInfo.block}${sortByRow[rown].posInfo.rowInfo.row + 1}`
+        //  , sortByRow[rown].namesj
+        return [n.namesj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}`
           , `${sortByRow[rown].posInfo.block}${sortByRow[rown].posInfo.rowInfo.row+1}`
           , sortByRow[rown].namesj
         ];
-      })));
+      }));
+    
+    */
+    
+    const lastBatchUpdateData = createCellRequest({
+      mergeRowStartIndex: namesFlattened.length,
+      sheetId: DisplaySheetId,
+      endColumnIndex: 4,
+      endRowIndex: hankDspRows.length + 1,
+      rows: hankDspRows.map((n, rown) => {
+        const borderStyle1 = {
+          style: 'SOLID',
+          width: 1,
+          color: {
+            blue: 0,
+            green: 0,
+            red: 0
+          }
+        };
+        if (!sortByRow[rown]) {
+          return {
+            values: [createCellRowData({
+              stringValue: n.text || '' + rown,
+              borders: {
+                left: borderStyle1,
+                bottom: borderStyle1,
+                right: borderStyle1,
+              }
+            })]
+          };
+        }
+        return {
+          values: [n.namesj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}`
+            , `${sortByRow[rown].posInfo.block}${sortByRow[rown].posInfo.rowInfo.row + 1}`
+            , sortByRow[rown].namesj
+          ].map((stringValue, pos) => {
+            
+            const borderStyle2 = {
+              ...borderStyle1,
+              width: 3
+            };
+            let borders = {
+              bottom: borderStyle1,
+              left: borderStyle1,
+            };
+            if (pos == 1) {
+              borders.right = borderStyle2;
+            }
+            if (pos == 3) {
+              borders.right = borderStyle1;
+            }
+            return createCellRowData({
+              stringValue,
+              borders,
+            })
+          })
+        };
+      }),
+    });
+    const lastRes = await sheet.doBatchUpdate(lastBatchUpdateData);
+
+
+    console.log(lastRes)
 
     //await utils.sendEmail();
   }
@@ -856,6 +932,98 @@ const preSits = fixedInfo.reduce((acc,f) => {
     unableToSet,
     totalSeated,
   }
+}
+
+
+function createCellRequest({
+  sheetId,
+  endColumnIndex,
+  endRowIndex,
+  mergeRowStartIndex,
+  rows
+}) {
+  const updateData = {
+    requests: [
+      {
+        mergeCells: {
+          range: {
+            sheetId,
+            startColumnIndex: 0,
+            endColumnIndex,
+            startRowIndex: mergeRowStartIndex,
+            endRowIndex ,
+          },
+          mergeType: 'MERGE_ROWS',
+        },
+      },
+      {        
+        updateCells: {
+          fields: '*',
+          range: {
+            sheetId,
+            startColumnIndex: 0,
+            endColumnIndex,
+            startRowIndex: 0,
+            endRowIndex
+          },
+          rows,
+        }
+      }
+    ]
+  };
+  return updateData;
+}
+
+function createCellRowData({
+  stringValue, //userEnteredString value
+  backgroundColor = { red: 1, green: 1, blue: 1 },
+  horizontalAlignment = 'CENTER',
+  foregroundColor = { red: 0, green: 0, blue: 0 },
+  bold = false,
+  fontSize = 10,
+  strikethrough = false,
+  underline = false,
+  italic = false,
+  borders = {
+    bottom: {
+      style: 'SOLID',
+      width: 1,
+      color: {
+        blue: 0,
+        green: 0,
+        red: 0
+      }
+    },
+    left: {
+      style: 'SOLID',
+      width: 1,
+      color: {
+        blue: 0,
+        green: 0,
+        red: 0
+      }
+    }
+  },
+}) {
+  const cell = {
+    userEnteredValue: { stringValue }
+  };
+  
+  cell.userEnteredFormat = {
+    backgroundColor,
+    horizontalAlignment,
+    textFormat: {
+      foregroundColor,
+      //fontFamily: string,
+      fontSize,
+      bold,
+      italic,
+      strikethrough,
+      underline,
+    },
+    borders,
+  };
+  return cell;
 }
 
 if (isLocal) {
