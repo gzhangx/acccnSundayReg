@@ -185,7 +185,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
   let attendeesPrms = null;
   while (true) {
     const pages = await ebFetch(`https://www.eventbriteapi.com/v3/events/${nextGoodEvent.id}/attendees`, attendeesPrms);
-    attendees = attendees.concat(pages.attendees);
+    attendees = attendees.concat(pages.attendees.filter(x=>!x.cancelled));
     if (pages.pagination.has_more_items) {
       attendeesPrms = {
         continuation: pages.pagination.continuation,
