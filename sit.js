@@ -59,7 +59,7 @@ IT 執事	D9
   }
   const ebQueryStatus = {
     time_filter: debugComplted ? 'past' : 'current_future',
-    status: debugComplted ? 'ended' : 'live'
+    status: debugComplted ? 'completed' : 'live'
   }
 
 
@@ -844,8 +844,10 @@ const preSits = fixedInfo.reduce((acc,f) => {
     const resd = userInfo.length % printRowsPerPage;
     const totalLines = (resd > 0 ? printRowsPerPage * 2 : printRowsPerPage) + (parseInt(userInfo.length / printRowsPerPage) * printRowsPerPage);
     
-    const hankDspRows = namesFlattened.concat(Array(totalLines - namesFlattened.length).fill({ isEmpty: true, text: '' }));
-    hankDspRows[namesFlattened.length] = { text: 'Tests title' };
+    const hankDspRows = namesFlattened.concat(Array(totalLines - namesFlattened.length).fill({ isEmpty: true, texts: ['', '', ''] }));
+    hankDspRows[namesFlattened.length] = { texts: [''] };
+    hankDspRows[namesFlattened.length + 1] = { texts: ['Walk In Registration'] };
+    hankDspRows[namesFlattened.length + 2] = { texts: ['Name' , '', 'Address'] };
     const sortByRow = sortBy(namesFlattened, n => `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`);
     /*
     await sheet.updateValues(`'${nextSunday}Display'!A1:F${hankDspRows.length + 1}`,
@@ -865,9 +867,10 @@ const preSits = fixedInfo.reduce((acc,f) => {
     */
     
     const lastBatchUpdateData = createCellRequest({
+      hankDspRows,
       mergeRowStartIndex: namesFlattened.length,
       sheetId: DisplaySheetId,
-      endColumnIndex: 5,
+      endColumnIndex: 7,
       endRowIndex: hankDspRows.length + 1,
       rows: hankDspRows.map((n, rown) => {
         const borderStyle1 = {
@@ -880,20 +883,23 @@ const preSits = fixedInfo.reduce((acc,f) => {
           }
         };
         if (!sortByRow[rown]) {
+          const isCenter = n.texts?.length == 1;
           return {
-            values: [createCellRowData({
-              stringValue: n.text || '' + rown,
+            values: n.texts.map(v=>createCellRowData({
+              stringValue: v,
+              horizontalAlignment: isCenter ? 'CENTER' : 'Left',
+              bold: isCenter,
               borders: {
                 left: borderStyle1,
                 bottom: borderStyle1,
                 right: borderStyle1,
               }
-            })]
+            })),
           };
         }
         return {
-          values: [rown.toString(), n.namesj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}`
-            , `${sortByRow[rown].posInfo.block}${sortByRow[rown].posInfo.rowInfo.row + 1}`
+          values: [rown.toString(), n.namesj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}`, ''
+            ,'', `${sortByRow[rown].posInfo.block}${sortByRow[rown].posInfo.rowInfo.row + 1}`
             , sortByRow[rown].namesj
           ].map((stringValue, pos) => {
             
@@ -904,12 +910,10 @@ const preSits = fixedInfo.reduce((acc,f) => {
             let borders = {
               bottom: borderStyle1,
               left: borderStyle1,
-            };
-            if (pos == 1) {
-              borders.right = borderStyle2;
-            }
+              right: borderStyle1,
+            };            
             if (pos == 3) {
-              borders.right = borderStyle1;
+              borders.right = borderStyle2;
             }
             return createCellRowData({
               stringValue,
@@ -940,21 +944,169 @@ function createCellRequest({
   endColumnIndex,
   endRowIndex,
   mergeRowStartIndex,
-  rows
+  rows,
+  hankDspRows,
 }) {
+  const singleCells = hankDspRows.map((x, pos) => {
+    if (!x.texts || x.texts.length !== 1) return null;
+    return {
+      mergeCells: {
+        range: {
+          sheetId,
+          startColumnIndex: 0,
+          endColumnIndex,
+          startRowIndex: pos,
+          endRowIndex: pos + 1,
+        },
+        mergeType: 'MERGE_ROWS',
+      }
+    }
+  }).filter(x => x);
+  
+  const TWODIGITCELLSIZE = 20;
+  const DISPLAYNAMECELLSIZE = 200;
   const updateData = {
     requests: [
       {
-        mergeCells: {
+        unmergeCells: {
           range: {
             sheetId,
             startColumnIndex: 0,
             endColumnIndex,
-            startRowIndex: mergeRowStartIndex,
+            startRowIndex: 0,
+            endRowIndex,
+          }
+        },
+      },
+      ...singleCells,
+      {        
+        mergeCells: {
+          range: {
+            sheetId,
+            startColumnIndex: 0,
+            endColumnIndex:2,
+            startRowIndex: mergeRowStartIndex + 2,
             endRowIndex ,
           },
           mergeType: 'MERGE_ROWS',
         },
+      },
+      {
+        mergeCells: {
+          range: {
+            sheetId,
+            startColumnIndex: 2,
+            endColumnIndex,
+            startRowIndex: mergeRowStartIndex + 2,
+            endRowIndex,
+          },
+          mergeType: 'MERGE_ROWS',
+        },
+      },
+      {
+        //display count column
+        updateDimensionProperties: {
+          range: {
+            sheetId,
+            dimension: 'COLUMNS',
+            startIndex: 0,
+            endIndex: 1
+          },
+          properties: {
+            pixelSize: TWODIGITCELLSIZE
+          },
+          fields: 'pixelSize'
+        }
+      },
+      {
+        //display name first
+        updateDimensionProperties: {
+          range: {
+            sheetId,
+            dimension: 'COLUMNS',
+            startIndex: 1,
+            endIndex: 2
+          },
+          properties: {
+            pixelSize: DISPLAYNAMECELLSIZE
+          },
+          fields: 'pixelSize'
+        }
+      },
+      {
+        //display name first pos
+        updateDimensionProperties: {
+          range: {
+            sheetId,
+            dimension: 'COLUMNS',
+            startIndex: 2,
+            endIndex: 3
+          },
+          properties: {
+            pixelSize: TWODIGITCELLSIZE
+          },
+          fields: 'pixelSize'
+        }
+      },
+      {
+        //display name first check
+        updateDimensionProperties: {
+          range: {
+            sheetId,
+            dimension: 'COLUMNS',
+            startIndex: 3,
+            endIndex: 4
+          },
+          properties: {
+            pixelSize: TWODIGITCELLSIZE
+          },
+          fields: 'pixelSize'
+        }
+      },
+      {
+        //display name second check
+        updateDimensionProperties: {
+          range: {
+            sheetId,
+            dimension: 'COLUMNS',
+            startIndex: 4,
+            endIndex: 5
+          },
+          properties: {
+            pixelSize: TWODIGITCELLSIZE
+          },
+          fields: 'pixelSize'
+        }
+      },
+      {
+        //display name second pos
+        updateDimensionProperties: {
+          range: {
+            sheetId,
+            dimension: 'COLUMNS',
+            startIndex: 5,
+            endIndex: 6
+          },
+          properties: {
+            pixelSize: TWODIGITCELLSIZE
+          },
+          fields: 'pixelSize'
+        }
+      },
+      {
+        //display name second 
+        updateDimensionProperties: {
+          range: {
+            sheetId,
+            dimension: 'COLUMNS',
+            startIndex: 6,
+            endIndex: 7
+          },
+          properties: {
+            pixelSize: DISPLAYNAMECELLSIZE
+          },
+          fields: 'pixelSize'
+        }
       },
       {        
         updateCells: {
@@ -977,7 +1129,7 @@ function createCellRequest({
 function createCellRowData({
   stringValue, //userEnteredString value
   backgroundColor = { red: 1, green: 1, blue: 1 },
-  horizontalAlignment = 'CENTER',
+  horizontalAlignment = 'Left',
   foregroundColor = { red: 0, green: 0, blue: 0 },
   bold = false,
   fontSize = 10,
