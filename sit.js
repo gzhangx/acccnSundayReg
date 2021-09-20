@@ -867,7 +867,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
     const lastBatchUpdateData = createCellRequest({
       mergeRowStartIndex: namesFlattened.length,
       sheetId: DisplaySheetId,
-      endColumnIndex: 4,
+      endColumnIndex: 5,
       endRowIndex: hankDspRows.length + 1,
       rows: hankDspRows.map((n, rown) => {
         const borderStyle1 = {
@@ -892,7 +892,7 @@ const preSits = fixedInfo.reduce((acc,f) => {
           };
         }
         return {
-          values: [n.namesj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}`
+          values: [rown.toString(), n.namesj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}`
             , `${sortByRow[rown].posInfo.block}${sortByRow[rown].posInfo.rowInfo.row + 1}`
             , sortByRow[rown].namesj
           ].map((stringValue, pos) => {
