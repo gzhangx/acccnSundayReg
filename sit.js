@@ -963,7 +963,7 @@ function createCellRequest({
     }
   }).filter(x => x);
   
-  const TWODIGITCELLSIZE = 20;
+  const TWODIGITCELLSIZE = 27;
   const DISPLAYNAMECELLSIZE = 200;
   const updateData = {
     requests: [
