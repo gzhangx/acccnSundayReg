@@ -38,7 +38,7 @@ IT 執事	D9
 
 //const client = await gs.getClient('gzprem');
   const sheet = initInfo.sheet; //client.getSheetOps(credentials.sheetId);
-  const fixedInfo = await sheet.readValues(`'${nextSunday}'!A1:F300`).catch(err => {
+  const fixedInfoOrig = await sheet.readValues(`'${nextSunday}'!A1:F300`).catch(err => {
     console.log('Unable to load fixed')
     //console.log(err.response.body);
     return [];
@@ -112,12 +112,6 @@ IT 執事	D9
     return [];
   }
   const ignoreBlocks = parseIgnoreBlocks();
-
-const preSits = fixedInfo.reduce((acc,f) => {
-  if (f[4])
-    acc[f[0]] = f;
-  return acc;
-}, {});
 
 
   const { pureSitConfig, getDisplayRow, CELLSIZE, blkLetterToId, numRows, colNumDisplay } = initInfo;
@@ -216,6 +210,35 @@ const preSits = fixedInfo.reduce((acc,f) => {
     }
   }
   
+
+  const assignedByEmail = templates.filter(f => f[0] === 'assignedByEmail').reduce((acc, f) => {
+    acc[f[1].toLocaleLowerCase()] = f[2]; //email:A#
+    return acc;
+  }, {});
+  const fixedInfo = fixedInfoOrig.concat(
+    attendees.filter(att => assignedByEmail[att.profile.email.toLocaleLowerCase()]).map(att => {
+      const sitLong = assignedByEmail[att.profile.email.toLocaleLowerCase()];
+      const dashInd = sitLong.indexOf('-');
+      if (dashInd < 0) {
+        console.log(`Warning, assigned sit for ${att.profile.email} need to have full sit like A0-3, but got ${sitLong}`);
+        throw 'err';
+      }      
+      const profile = att.profile;
+      return [
+        att.order_id,
+        profile.name,
+        profile.email,
+        sitLong.substr(0, dashInd),
+        sitLong,
+        { first_name: toSimp(profile.first_name), last_name: toSimp(profile.last_name), email: profile.email, name: profile.name },
+      ]
+    })
+  )
+  const preSits = fixedInfo.reduce((acc, f) => {
+    if (f[4])
+      acc[f[0]] = f;
+    return acc;
+  }, {});
   const preSiteItems = fixedInfo.filter(v => v[3]).map((v, pos) => {
     const order_id = v[0];
     const name = toSimp(v[1]);
