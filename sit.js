@@ -34,7 +34,13 @@ IT 執事	D9
 
   const initInfo = await utils.initAll();
   const nextSundays = initInfo.nextSundays;
-  const nextSunday = nextSundays[0];
+
+  const templates = initInfo.templates;
+  const debugFakeDate = get(templates.filter(f => f[0] === 'debugCompleted' && f[1] && f[1].length ===10),[0,1]);
+  if (debugFakeDate) {
+    console.log(`Warning, debug mode ${debugFakeDate}`);
+  }
+  const nextSunday = debugFakeDate || nextSundays[0];
 
 //const client = await gs.getClient('gzprem');
   const sheet = initInfo.sheet; //client.getSheetOps(credentials.sheetId);
@@ -51,15 +57,11 @@ IT 執事	D9
   //  }
   //});
 
-  const templates = initInfo.templates;
 
-  const debugComplted = !!templates.filter(f => f[0] === 'debugCompleted' && f[1] === 'TRUE').length;
-  if (debugComplted) {
-    console.log(`Warning, debug mode`);
-  }
+ 
   const ebQueryStatus = {
-    time_filter: debugComplted ? 'past' : 'current_future',
-    status: debugComplted ? 'completed' : 'live'
+    time_filter: debugFakeDate ? 'past' : 'current_future',
+    status: debugFakeDate ? 'completed' : 'live'
   }
 
 
@@ -216,7 +218,9 @@ IT 執事	D9
     return acc;
   }, {});
   const fixedInfo = fixedInfoOrig.concat(
-    attendees.filter(att => assignedByEmail[att.profile.email.toLocaleLowerCase()]).map(att => {
+    attendees.filter(att => assignedByEmail[att.profile.email.toLocaleLowerCase()]
+      && !fixedInfoOrig.find(ff => ff[2]?.toLocaleLowerCase() === att.profile.email.toLocaleLowerCase())
+    ).map(att => {
       const sitLong = assignedByEmail[att.profile.email.toLocaleLowerCase()];
       const dashInd = sitLong.indexOf('-');
       if (dashInd < 0) {
