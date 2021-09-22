@@ -1,0 +1,43 @@
+emailTemplate	"座位：{sit} <br>
+您好 {name}，您的座位是{sit}，请把这个Email给代位的弟兄姐妹看，帮助他们找到您的座位谢谢！
+<img src1='{imgSrc1}' cid='sit.jpg@cid' style=""margin: 0; border: 0; padding: 0; display: block; width=""720"" width=700 /> <br><br><br>
+
+<br>
+Hello {name}, your assigned seat is {sit}, please show this email to your usher for their convience.  Thank you!
+          <br><br>
+
+----{key} -- {email}"	
+		
+mappingDONTUSE	詩班	daqingwu09@gmail.com
+mappingDONTUSE	詩班	cui4261@gmail.com
+mappingDONTUSE	詩班	daqingwu09@gmail.com
+mappingDONTUSE	詩班	garyfoxatl@gmail.com
+mappingDONTUSE	詩班	xiaobai_z@yahoo.com
+mappingDONTUSE	詩班	atseng881@gmail.com
+mappingDONTUSE	詩班	chenhong201@hotmail.com
+mappingDONTUSE	詩班	yan_ao@hotmail.com
+mappingDONTUSE	帶位	gzhangx@hotmail.com
+mappingDONTUSE	帶位	hhousun@gmail.com
+		
+		
+colNumDisplay	+	
+		
+		
+searchTitle1	ACCCN 中文堂  會眾溝通會聚會	
+searchTitle2	ACCCN 北堂中文實體崇拜註册	
+pack	2	
+searchTitle	ACCCN 北堂中文實體崇拜註冊	
+		
+ignoreBlocks	[false,false,false,false]	
+		
+debugCompleted	2021-09-19-no	
+		
+assignedPrefixes	詩班,诗班,敬拜	B0-7
+assignedPrefixes	主席,講員,牧師,領詩,领诗	C0
+assignedPrefixes	主席,講員,牧師,領詩,领诗	D0
+assignedPrefixes	音效,投影,執事	D8
+assignedPrefixes	司琴	A0
+assignedPrefixes	帶位,带位	B11
+assignedPrefixes	司琴	A0
+		
+assignedByEmail	tieeyc@gmail.com	A8-13
