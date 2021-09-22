@@ -921,7 +921,7 @@ IT 執事	D9
           };
         }
         return {
-          values: [rown.toString(), n.namesj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}`, ''
+          values: [(rown+1).toString(), n.namesj, `${n.posInfo.block}${getDisplayRow(n.posInfo.row).toString()}`, ''
             ,'', `${sortByRow[rown].posInfo.block}${sortByRow[rown].posInfo.rowInfo.row + 1}`
             , sortByRow[rown].namesj
           ].map((stringValue, pos) => {
