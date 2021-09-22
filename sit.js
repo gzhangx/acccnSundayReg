@@ -230,7 +230,7 @@ IT 執事	D9
         profile.email,
         sitLong.substr(0, dashInd),
         sitLong,
-        { first_name: toSimp(profile.first_name), last_name: toSimp(profile.last_name), email: profile.email, name: profile.name },
+        JSON.stringify({ first_name: toSimp(profile.first_name), last_name: toSimp(profile.last_name), email: profile.email, name: profile.name }),
       ]
     })
   )
