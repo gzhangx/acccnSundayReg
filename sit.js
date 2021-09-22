@@ -869,8 +869,8 @@ IT 執事	D9
     
     const hankDspRows = namesFlattened.concat(Array(totalLines - namesFlattened.length).fill({ isEmpty: true, texts: ['', '', ''] }));
     hankDspRows[namesFlattened.length] = { texts: [''] };
-    hankDspRows[namesFlattened.length + 1] = { texts: ['Walk In Registration'] };
-    hankDspRows[namesFlattened.length + 2] = { texts: ['Name' , '', 'Address'] };
+    hankDspRows[namesFlattened.length + 1] = { texts: ['补注册登记(Walk In Registration)'] };
+    hankDspRows[namesFlattened.length + 2] = { texts: ['姓名' , '', '电邮地址'] };
     const sortByRow = sortBy(namesFlattened, n => `${n.posInfo.block}${n.posInfo.rowInfo.row}-${n.posInfo.rowInfo.col}`);
     /*
     await sheet.updateValues(`'${nextSunday}Display'!A1:F${hankDspRows.length + 1}`,
