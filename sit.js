@@ -634,17 +634,21 @@ IT 執事	D9
     }
     
     const createSheet = async (name, freeInd) => {
-      if (!sheetInfos.find(s => s.title === name)) {
-        while (true) {
-          if (sheetInfos.find(s => s.sheetId === freeInd)) {
-            freeInd++;
-            continue;
-          }
-          break;
-        }
-        console.log(`freeInd for ${name} ${freeInd}`);
-        await sheet.createSheet(freeInd, name);
+      for (let i = 0; i < sheetInfos.length; i++) {
+        const sheet = sheetInfos[i];
+        if (sheet.title === name) return sheet.sheetId;
       }
+      
+      while (true) {
+        if (sheetInfos.find(s => s.sheetId === freeInd)) {
+          freeInd++;
+          continue;
+        }
+        break;
+      }
+      console.log(`freeInd for ${name} ${freeInd}`);
+      await sheet.createSheet(freeInd, name);
+      
       return freeInd;
     };
 
@@ -950,6 +954,7 @@ IT 執事	D9
         };
       }),
     });
+    console.log(`Updating last batch data (${DisplaySheetId})`);
     const lastRes = await sheet.doBatchUpdate(lastBatchUpdateData);
 
 
