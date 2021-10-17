@@ -253,6 +253,8 @@ IT 執事	D9
     const key = `${name}:${email}`.toLocaleLowerCase();
     return {
       quantity: 1,
+      stillNeedsToBeSit: 1,
+      allSits: [],
       emails: [email],
       names: [name],
       profiles: [profile],
@@ -306,11 +308,13 @@ IT 執事	D9
         id: acc.ary.length + 1,
         name: toSimp(profile.name),
         email: profile.email,
+        allSits: [],
       };
       acc.oid[att.order_id] = ord;      
       acc.ary.push(ord);
     }
     ord.quantity++;
+    ord.stillNeedsToBeSit = ord.quantity;
     
     ord.emails.push(profile.email);
     ord.names.push(toSimp(profile.name));
@@ -419,6 +423,74 @@ IT 執事	D9
           side: cri.side,
         }
         return true;
+      }
+    }
+    return false;
+  }
+
+  const fitContinues = (who) => {
+    if (who.posInfo) return true;
+    for (let rowInc = 0; rowInc < numRows; rowInc++) {
+      const row = rowInc;
+      for (let blki = 0; blki < blockSits.length; blki++) {
+        if (!pureSitConfig[blki].goodRowsToUse[rowInc]) continue;
+        if (ignoreBlocks[blki]) continue;
+        const blkName = blkMap[blki];
+        const preAssignedNamesForSit = get(preAssignedSits, [blkName, row, PREASSIGNEDSIT_ARYNAME]);
+        if (preAssignedNamesForSit) {
+          const matched = preAssignedNamesForSit.find(pfx => who.name.startsWith(pfx));
+          if (!matched) continue;
+        }
+        const curBlock = blockSits[blki];
+        //if (!curBlock) continue;
+        const curRow = curBlock[row]?.filter(x => x);
+        if (!curRow) continue;
+
+
+        for (let tryCol = 0; tryCol < curRow.length; tryCol++) {
+          if (!curRow[tryCol]) continue;
+          if (curRow[tryCol].user) continue;
+          if (curRow[tryCol].sitTag !== 'X' && curRow[tryCol].sitTag !== 'N') continue;
+                    
+          const canSitAtCol = col => {
+            let toCheckLeft = col - siteSpacing;
+            let toCheckRight = col + siteSpacing;
+            if (toCheckLeft < 0) toCheckLeft = 0;
+            if (toCheckRight >= curRow.length) toCheckRight = curRow.length - 1;
+            
+            for (let i = toCheckLeft; i < toCheckRight; i++) {
+              if (!curRow[i]) return true;
+              const exitUsr = curRow[i].user;
+              if (exitUsr && exitUsr != who) return false;
+            }
+            return true;
+            
+          };
+          for (let i = 0; i < who.quantity; i++) {
+            if (!curRow[tryCol].user && canSitAtCol(tryCol)) {
+              curRow[tryCol].user = who;
+              who.stillNeedsToBeSit--;
+              who.allSits.push({
+                block: blkMap[blki],
+                row,
+                rowInfo: curRow[tryCol],
+                col: tryCol,
+              });
+              seated++;
+            }
+            //else return fit(who, reverse); //this needs testing, i.e. we grow out of current row.
+          }
+          if (!who.stillNeedsToBeSit) {
+            who.posInfo = {
+              block: blkMap[blki],
+              row,
+              rowInfo: curRow[tryCol],
+              side: 'A',
+            }
+            return true;
+          }          
+        }
+
       }
     }
     return false;
@@ -582,6 +654,14 @@ IT 執事	D9
 
   let unableToSet = 0;
   let totalSeated = 0;
+  names.forEach(n => {
+    if (!fitContinues(n)) {
+      console.log(`Warning, unable to fit ${n.name}`);
+      unableToSet++;
+    } else {
+      totalSeated++;
+    }
+  })
   names.forEach(n => {
     if (!fit(n)) {
       console.log(`Warning, unable to fit ${n.name}`);
