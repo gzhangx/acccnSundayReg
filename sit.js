@@ -648,7 +648,8 @@ IT 執事	D9
   //const choreNames = ['詩 ', '詩-'];
   preFixesInfo.filter(p => p.prefix).forEach(prefixInfo => {
     names.filter(n => n.name.startsWith(prefixInfo.prefix) || emailToFuncMappings[n.email] === prefixInfo.prefix).forEach(n => {
-      fitSection(n, prefixInfo.pos);
+      fitContinues(n);
+      //fitSection(n, prefixInfo.pos);
     });
   });
 
