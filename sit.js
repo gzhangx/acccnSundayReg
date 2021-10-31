@@ -72,6 +72,7 @@ IT 執事	D9
     const posRaw = f[2].split('-');
     const blk = posRaw[0][0];
     const nopack = f[3] === 'nopack';
+    const allRows = f[3] === 'allRows';
     posRaw[0] = posRaw[0].slice(1);
     if (posRaw.length === 1) posRaw.push(posRaw[0]);
     const from = posRaw[0];
@@ -80,7 +81,8 @@ IT 執事	D9
     prefixes.forEach(prefix => {
       preFixesInfo.push({
         prefix,
-        pos: `${blk}${from}`
+        pos: `${blk}${from}`,
+        allRows,
       })
     });
     if (nopack) return acc;
@@ -443,7 +445,7 @@ IT 執事	D9
     }
   }
 
-  const fitSection = (who, sectionName) => {
+  const fitSection = (who, sectionName, allRows) => {
     if (who.posInfo) return true;    
     const blki = blkLetterToId[sectionName[0]]; //block B only , //B11
     const getRowFromSection = () => {
@@ -453,6 +455,7 @@ IT 執事	D9
     }
     const curBlock = blockSits[blki];
     for (let row = getRowFromSection(); row < numRows; row++) {
+      if (!allRows && !pureSitConfig[blki].goodRowsToUse[row]) continue;
       const curRow = curBlock[row]?.filter(x => x);
       if (!curRow) break;
       if (tryColsOnRow(blki, row, who)) return;
@@ -657,7 +660,8 @@ IT 執事	D9
   //const choreNames = ['詩 ', '詩-'];
   preFixesInfo.filter(p => p.prefix).forEach(prefixInfo => {
     names.filter(n => n.name.startsWith(prefixInfo.prefix) || emailToFuncMappings[n.email] === prefixInfo.prefix).forEach(n => {      
-      fitSection(n, prefixInfo.pos);
+      if (prefixInfo.allRows) fitSection(n, prefixInfo.pos, prefixInfo.allRows);
+      else fitContinues(n)
     });
   });
 
