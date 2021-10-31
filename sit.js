@@ -392,6 +392,57 @@ IT 執事	D9
 
 
   const siteSpacing = 2;
+
+  const tryColsOnRow = (blki, row, who) => {
+    const curBlock = blockSits[blki];
+    //if (!curBlock) continue;
+    const curRow = curBlock[row]?.filter(x => x);
+    if (!curRow) return false;
+    for (let tryCol = 0; tryCol < curRow.length; tryCol++) {
+      if (!curRow[tryCol]) continue;
+      if (curRow[tryCol].user) continue;
+      if (curRow[tryCol].sitTag !== 'X' && curRow[tryCol].sitTag !== 'N') continue;
+
+      const canSitAtCol = col => {
+        let toCheckLeft = col - siteSpacing;
+        let toCheckRight = col + siteSpacing;
+        if (toCheckLeft < 0) toCheckLeft = 0;
+        if (toCheckRight >= curRow.length) toCheckRight = curRow.length - 1;
+
+        for (let i = toCheckLeft; i < toCheckRight; i++) {
+          if (!curRow[i]) return true;
+          const exitUsr = curRow[i].user;
+          if (exitUsr && exitUsr != who) return false;
+        }
+        return true;
+
+      };
+      for (let i = 0; i < who.quantity; i++) {
+        if (!curRow[tryCol].user && canSitAtCol(tryCol)) {
+          curRow[tryCol].user = who;
+          who.stillNeedsToBeSit--;
+          who.allSits.push({
+            block: blkMap[blki],
+            row,
+            rowInfo: curRow[tryCol],
+            col: tryCol,
+          });
+          seated++;
+        }
+        //else return fit(who, reverse); //this needs testing, i.e. we grow out of current row.
+      }
+      if (!who.stillNeedsToBeSit) {
+        who.posInfo = {
+          block: blkMap[blki],
+          row,
+          rowInfo: curRow[tryCol],
+          side: 'A',
+        }
+        return true;
+      }
+    }
+  }
+
   const fitSection = (who, sectionName) => {
     if (who.posInfo) return true;    
     const blki = blkLetterToId[sectionName[0]]; //block B only , //B11
@@ -404,6 +455,8 @@ IT 執事	D9
     for (let row = getRowFromSection(); row < numRows; row++) {
       const curRow = curBlock[row]?.filter(x => x);
       if (!curRow) break;
+      if (tryColsOnRow(blki, row, who)) return;
+      /*
       const blkName = blkMap[blki];
       const preAssignedNamesForSit = get(preAssignedSits, [blkName, row, PREASSIGNEDSIT_ARYNAME]);
       if (preAssignedNamesForSit) {
@@ -424,10 +477,12 @@ IT 執事	D9
         }
         return true;
       }
+      */
     }
     return false;
   }
 
+  
   const fitContinues = (who) => {
     if (who.posInfo) return true;
     for (let rowInc = 0; rowInc < numRows; rowInc++) {
@@ -441,55 +496,9 @@ IT 執事	D9
           const matched = preAssignedNamesForSit.find(pfx => who.name.startsWith(pfx));
           if (!matched) continue;
         }
-        const curBlock = blockSits[blki];
-        //if (!curBlock) continue;
-        const curRow = curBlock[row]?.filter(x => x);
-        if (!curRow) continue;
+      
 
-
-        for (let tryCol = 0; tryCol < curRow.length; tryCol++) {
-          if (!curRow[tryCol]) continue;
-          if (curRow[tryCol].user) continue;
-          if (curRow[tryCol].sitTag !== 'X' && curRow[tryCol].sitTag !== 'N') continue;
-                    
-          const canSitAtCol = col => {
-            let toCheckLeft = col - siteSpacing;
-            let toCheckRight = col + siteSpacing;
-            if (toCheckLeft < 0) toCheckLeft = 0;
-            if (toCheckRight >= curRow.length) toCheckRight = curRow.length - 1;
-            
-            for (let i = toCheckLeft; i < toCheckRight; i++) {
-              if (!curRow[i]) return true;
-              const exitUsr = curRow[i].user;
-              if (exitUsr && exitUsr != who) return false;
-            }
-            return true;
-            
-          };
-          for (let i = 0; i < who.quantity; i++) {
-            if (!curRow[tryCol].user && canSitAtCol(tryCol)) {
-              curRow[tryCol].user = who;
-              who.stillNeedsToBeSit--;
-              who.allSits.push({
-                block: blkMap[blki],
-                row,
-                rowInfo: curRow[tryCol],
-                col: tryCol,
-              });
-              seated++;
-            }
-            //else return fit(who, reverse); //this needs testing, i.e. we grow out of current row.
-          }
-          if (!who.stillNeedsToBeSit) {
-            who.posInfo = {
-              block: blkMap[blki],
-              row,
-              rowInfo: curRow[tryCol],
-              side: 'A',
-            }
-            return true;
-          }          
-        }
+        if (tryColsOnRow(blki, row, who)) return true;        
 
       }
     }
@@ -647,9 +656,8 @@ IT 執事	D9
 
   //const choreNames = ['詩 ', '詩-'];
   preFixesInfo.filter(p => p.prefix).forEach(prefixInfo => {
-    names.filter(n => n.name.startsWith(prefixInfo.prefix) || emailToFuncMappings[n.email] === prefixInfo.prefix).forEach(n => {
-      fitContinues(n);
-      //fitSection(n, prefixInfo.pos);
+    names.filter(n => n.name.startsWith(prefixInfo.prefix) || emailToFuncMappings[n.email] === prefixInfo.prefix).forEach(n => {      
+      fitSection(n, prefixInfo.pos);
     });
   });
 
