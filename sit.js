@@ -454,8 +454,9 @@ IT 執事	D9
       return parseInt(pt);
     }
     const curBlock = blockSits[blki];
-    for (let row = getRowFromSection(); row < numRows; row++) {
-      if (!allRows && !pureSitConfig[blki].goodRowsToUse[row]) continue;
+    const fixedStartedRow = getRowFromSection();
+    for (let row = fixedStartedRow; row < numRows; row++) {
+      if (!allRows && !pureSitConfig[blki].goodRowsToUse[row] && row !== fixedStartedRow) continue;
       const curRow = curBlock[row]?.filter(x => x);
       if (!curRow) break;
       if (tryColsOnRow(blki, row, who)) return;
@@ -660,8 +661,9 @@ IT 執事	D9
   //const choreNames = ['詩 ', '詩-'];
   preFixesInfo.filter(p => p.prefix).forEach(prefixInfo => {
     names.filter(n => n.name.startsWith(prefixInfo.prefix) || emailToFuncMappings[n.email] === prefixInfo.prefix).forEach(n => {      
-      if (prefixInfo.allRows) fitSection(n, prefixInfo.pos, prefixInfo.allRows);
-      else fitContinues(n)
+      //if (prefixInfo.allRows)
+    fitSection(n, prefixInfo.pos, prefixInfo.allRows);
+      //else fitContinues(n)
     });
   });
 
