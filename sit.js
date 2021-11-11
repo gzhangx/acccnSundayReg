@@ -2,7 +2,8 @@
 const isLocal = true;
 
 //const gs = require('./getSheet');
-//const fs = require('fs');
+const fs = require('fs');
+const DEBUGMODE = true;
 //const request = require('superagent');
 const { get, sortBy } = require('lodash');
 const { toSimp } = require('./gbTran');
@@ -13,6 +14,7 @@ const credentials = require('./credentials.json');
 const utils = require('./util');
 
 async function getEventUserData(debugFakeDate, templates, nextSunday) {
+  if (DEBUGMODE) return JSON.parse(fs.readFileSync("temp/test.json"));
   const ebQueryStatus = {
     time_filter: debugFakeDate ? 'past' : 'current_future',
     status: debugFakeDate ? 'completed' : 'live'
@@ -88,7 +90,7 @@ async function getEventUserData(debugFakeDate, templates, nextSunday) {
       continue;
     }
     break;
-  }
+  }  
   return { eventName, attendees };
 }
 
