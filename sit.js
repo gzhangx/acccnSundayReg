@@ -11,6 +11,87 @@ const perfixOnLastName = true;
 const sheetName = 'Sheet1';
 const credentials = require('./credentials.json');
 const utils = require('./util');
+
+async function getEventUserData(debugFakeDate, templates, nextSunday) {
+  const ebQueryStatus = {
+    time_filter: debugFakeDate ? 'past' : 'current_future',
+    status: debugFakeDate ? 'completed' : 'live'
+  }
+
+  const authorizationToken = credentials.eventBriteAuth;
+  const ebFetch = async (url, prms) => {
+    if (prms) {
+      url = url + '?' + Object.keys(prms).map(n => `${n}=${encodeURIComponent(prms[n])}`).join('&');
+    }
+    //console.log(`url=${url}`);
+    if (isLocal) {
+      //var response = await request.get("https://www.eventbriteapi.com/v3/events/156798329023/attendees").set('Authorization', authorizationToken).send();
+      //pages = response.body
+      const response = await require('superagent').get(url).set('Authorization', authorizationToken).send();
+      return response.body;
+    } else {
+      var response = UrlFetchApp.fetch(url, {
+        headers:
+        {
+          authorization: authorizationToken
+        }
+      });
+      const pages = JSON.parse(response.getContentText())
+      return pages;
+    }
+  }
+
+  const searchTitle = get(templates.filter(t => t[0] === 'searchTitle'), [0, 1]) || credentials.eventTitle;
+  //console.log(`trying to search event ${searchTitle}`);
+  const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/',
+    { name_filter: searchTitle, time_filter: ebQueryStatus.time_filter }
+  );
+  const eventsMappedNonFiltered = eventArys.events.map(e => {
+    return {
+      id: e.id,
+      date: e.start.local.slice(0, 10),
+      name: e.name,
+      status: e.status,
+    }
+  }).filter(s => s.status === ebQueryStatus.status);
+  const eventsMapped = eventsMappedNonFiltered.filter(x => x.date === nextSunday);
+  let nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
+  //nextGoodEvent = (eventsMappedNonFiltered)[0]; //TODO: fix
+  if (!nextGoodEvent) {
+    console.log('Next not found');
+    console.log(eventsMappedNonFiltered)
+    return;
+  }
+  let nsi = 0;
+  while (!nextGoodEvent && nsi < nextSundays.length) {
+    nsi++;
+    nextGoodEvent = (eventsMapped.filter(x => x.date === nextSundays[nsi]))[0];
+  }
+  if (!nextGoodEvent) {
+    console.log('Next event not found');
+    console.log(eventsMapped);
+    return;
+  }
+
+  const eventName = nextGoodEvent.name.text;
+  console.log(`Event name ${eventName}`);
+
+  let attendees = [];
+  let attendeesPrms = null;
+  while (true) {
+    const pages = await ebFetch(`https://www.eventbriteapi.com/v3/events/${nextGoodEvent.id}/attendees`, attendeesPrms);
+    attendees = attendees.concat(pages.attendees.filter(x => !x.cancelled));
+    if (pages.pagination.has_more_items) {
+      attendeesPrms = {
+        continuation: pages.pagination.continuation,
+      }
+      continue;
+    }
+    break;
+  }
+  return { eventName, attendees };
+}
+
 async function myFunction() {
 
   /* current saved
@@ -59,10 +140,7 @@ IT 執事	D9
 
 
  
-  const ebQueryStatus = {
-    time_filter: debugFakeDate ? 'past' : 'current_future',
-    status: debugFakeDate ? 'completed' : 'live'
-  }
+
 
 
 
@@ -122,77 +200,8 @@ IT 執事	D9
 //console.log(pureSitConfig.map(s=>({cols: s.cols, rows: s.rows})))
 //return console.log(pureSitConfig.map(r => r.sits.map(v => v.map(vv => vv ? 'X' : ' ').join('')).join('\n')).join('\n'));
 
-  const authorizationToken = credentials.eventBriteAuth;
-  const ebFetch = async (url, prms) => {
-    if (prms) {
-      url = url + '?' + Object.keys(prms).map(n => `${n}=${encodeURIComponent(prms[n])}`).join('&');
-    }
-    //console.log(`url=${url}`);
-    if (isLocal) {
-      //var response = await request.get("https://www.eventbriteapi.com/v3/events/156798329023/attendees").set('Authorization', authorizationToken).send();
-      //pages = response.body
-      const response = await require('superagent').get(url).set('Authorization', authorizationToken).send();
-      return response.body;
-    } else {
-      var response = UrlFetchApp.fetch(url, {
-        headers:
-        {
-          authorization: authorizationToken
-        }
-      });
-      const pages = JSON.parse(response.getContentText())
-      return pages;
-    }
-  }
-
-  const searchTitle = get(templates.filter(t => t[0] === 'searchTitle'),[0,1]) || credentials.eventTitle;
-  //console.log(`trying to search event ${searchTitle}`);
-  const eventArys = await ebFetch('https://www.eventbriteapi.com/v3/organizations/544694808143/events/',
-    { name_filter: searchTitle, time_filter: ebQueryStatus.time_filter }
-  );
-  const eventsMappedNonFiltered = eventArys.events.map(e => {
-    return {
-      id: e.id,
-      date: e.start.local.slice(0, 10),
-      name: e.name,
-      status: e.status,
-    }
-  }).filter(s => s.status === ebQueryStatus.status);
-  const eventsMapped = eventsMappedNonFiltered.filter(x => x.date === nextSunday);
-  let nextGoodEvent = (eventsMapped.filter(x => x.date === nextSunday))[0];
-  //nextGoodEvent = (eventsMappedNonFiltered)[0]; //TODO: fix
-  if (!nextGoodEvent) {
-    console.log('Next not found');
-    console.log(eventsMappedNonFiltered)
-    return;
-  }
-  let nsi = 0;
-  while (!nextGoodEvent && nsi < nextSundays.length) {
-    nsi++;
-    nextGoodEvent = (eventsMapped.filter(x => x.date === nextSundays[nsi]))[0];
-  }
-  if (!nextGoodEvent) {
-    console.log('Next event not found');
-    console.log(eventsMapped);
-    return;
-  }
-
-  const eventName = nextGoodEvent.name.text;
-  console.log(`Event name ${eventName}`);
-  
-  let attendees = [];
-  let attendeesPrms = null;
-  while (true) {
-    const pages = await ebFetch(`https://www.eventbriteapi.com/v3/events/${nextGoodEvent.id}/attendees`, attendeesPrms);
-    attendees = attendees.concat(pages.attendees.filter(x=>!x.cancelled));
-    if (pages.pagination.has_more_items) {
-      attendeesPrms = {
-        continuation: pages.pagination.continuation,
-      }
-      continue;
-    }
-    break;
-  }
+  ////////////////////==============>
+  const { attendees, eventName } = await getEventUserData(debugFakeDate, templates, nextSunday);
   console.log(`Total attendees ${attendees.length}`);
   if (false && isLocal) {    
     const fakeSizes = { 'gg1': 3, 'gg12': 4 ,'gg19':6,'gg22':8,'gg33':5};
