@@ -456,7 +456,10 @@ IT 執事	D9
     const curBlock = blockSits[blki];
     const fixedStartedRow = getRowFromSection();
     for (let row = fixedStartedRow; row < numRows; row++) {
-      if (!allRows && !pureSitConfig[blki].goodRowsToUse[row] && row !== fixedStartedRow) continue;
+      if (!allRows) {
+        if (!pureSitConfig[blki].goodRowsToUse[row]) continue;
+        if (row !== fixedStartedRow) continue;
+      } 
       const curRow = curBlock[row]?.filter(x => x);
       if (!curRow) break;
       if (tryColsOnRow(blki, row, who)) return;
