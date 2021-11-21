@@ -663,7 +663,7 @@ IT 執事	D9
 
   //const choreNames = ['詩 ', '詩-'];
   preFixesInfo.filter(p => p.prefix).forEach(prefixInfo => {
-    names.filter(n => n.name.startsWith(prefixInfo.prefix) || emailToFuncMappings[n.email] === prefixInfo.prefix).forEach(n => {      
+    names.filter(n => n.name.indexOf(prefixInfo.prefix)>=0 || emailToFuncMappings[n.email] === prefixInfo.prefix).forEach(n => {      
       //if (prefixInfo.allRows)
     fitSection(n, prefixInfo.pos, prefixInfo.allRows);
       //else fitContinues(n)

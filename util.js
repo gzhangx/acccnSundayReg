@@ -384,7 +384,7 @@ async function initAll() {
                 .replace(/{key}/g, g.key)
             //console.log(html)
             try {
-                console.log(`Sending to ${g.email}`);
+                console.log(`Sending to ${g.email}  ${g.key} ${g.side}`);
                 const ind = g.imgSrc.indexOf('base64,');
                 content = g.imgSrc.substr(ind + 7);
                 await transporter.sendMail({
